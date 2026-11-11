@@ -4,3 +4,4 @@ node_modules/
 .pi/settings.local.json
 *.log
 .pi/npm/
+samples/current-session.*
