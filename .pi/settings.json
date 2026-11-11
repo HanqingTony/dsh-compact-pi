@@ -1,0 +1,25 @@
+{
+  "$schema": "https://pi.dev/schemas/settings.schema.json",
+  "packages": [
+    {
+      "source": "npm:billion-context-pi-lean",
+      "autoload": false,
+      "extensions": [],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    },
+    {
+      "source": "npm:billion-context-pi",
+      "autoload": false,
+      "extensions": [],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    },
+    {
+      "source": "..",
+      "autoload": true
+    }
+  ]
+}

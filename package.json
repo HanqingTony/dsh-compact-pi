@@ -1,0 +1,47 @@
+{
+  "name": "zcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "z's compact — run DeepSeek Harness compaction on pi with a native DSH session codec",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run build:plugin && npm run build:codec && npm run build:cli",
+    "build:plugin": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --external:@earendil-works/pi-coding-agent",
+    "build:codec": "esbuild src/codec.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/codec.mjs",
+    "build:cli": "esbuild bin/dsh-session.ts bin/pi-dsh.ts --bundle --platform=node --format=esm --target=node20 --outdir=dist --out-extension:.js=.mjs --banner:js='#!/usr/bin/env node'",
+    "test": "tsx test/bridge.test.ts && tsx test/host.test.ts && tsx test/pruner.test.ts && tsx test/codec.test.ts && tsx test/convert.test.ts",
+    "convert": "node dist/dsh-session.mjs",
+    "patch": "node scripts/patch-pi.mjs",
+    "unpatch": "node scripts/patch-pi.mjs --restore"
+  },
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "bin": {
+    "zcp": "./dist/pi-dsh.mjs",
+    "zcp-session": "./dist/dsh-session.mjs"
+  },
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "scripts",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.13"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "compaction",
+    "context-management",
+    "deepseek-harness",
+    "dsh"
+  ]
+}
