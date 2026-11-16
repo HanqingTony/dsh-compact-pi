@@ -41,4 +41,6 @@ pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b2
 
 A Git release must include `dist/`, `vendor/` and the package manifest so installing it does not require development dependencies or an upstream checkout. Tag only the verified release commit. Keep source provenance and third-party licenses in the repository and tarball. npm publication is pending and is not required for Git installation.
 
+Tags pin installations: publishing a new tag does not upgrade users pinned to an older one. Tell users to install the new tag explicitly, or omit the ref to follow `main`. In pi 1.5.2, `pi update` updates pi itself; package updates use `pi update --extensions` or `pi update <source>`. Document the reload and version check with each release. See [Updating an existing installation](../README.md#updating-an-existing-installation) for the user-facing commands.
+
 After publishing, update the README with the verified public installation URL and create release notes from `CHANGELOG.md`.

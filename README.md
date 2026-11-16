@@ -2,7 +2,7 @@
 
 An installable pi extension hosting **unmodified DeepSeek Harness compaction plugins in real Cordis**. DCP adapts a defined common subset of pi and DSH; its source updater copies upstream files without rewriting imports or patching the compression algorithm.
 
-Requires pi 1.5.2 and Node.js >=24.9.0 (matching the upstream source runtime requirement). DCP's version uses the upstream DSH base version plus its own build number: currently **0.2.2b2** (DSH base 0.2.2, DCP build 2). The npm SemVer is `0.2.2-b2`; `/dcp-status` and Ctrl+O display `0.2.2b2`. Subsequent DCP builds increment `b2`, `b3`, etc., independently of the upstream snapshot. The exact DSH snapshot is 0.2.2-rc.1, pinned in [vendor/manifest.json](vendor/manifest.json) and shown separately by `/dcp-status`. Running or building DCP does not require a DSH checkout.
+Requires pi 1.5.2 and Node.js >=24.9.0 (matching the upstream source runtime requirement). DCP's version uses the upstream DSH base version plus its own build number: currently **0.2.2b2** (DSH base 0.2.2, DCP build 2). The npm SemVer is `0.2.2-b2`; `/dcp-status` and Ctrl+O display `0.2.2b2`. Subsequent DCP builds increment `b3`, `b4`, etc., independently of the upstream snapshot. The exact DSH snapshot is 0.2.2-rc.1, pinned in [vendor/manifest.json](vendor/manifest.json) and shown separately by `/dcp-status`. Running or building DCP does not require a DSH checkout.
 
 ## Install and use
 
@@ -25,6 +25,36 @@ pi --no-extensions -e /absolute/path/to/dsh-compact-pi/dist/index.js
 Automatic pressure checks use DSH's `agent/pre-step` listener. Overflow decisions and budgets belong to DSH's `agent/request-error` listener. Manual compaction uses DSH's `compactNow()`, including its persistence checkpoint. DCP does not add manual pre-pruning, an emergency pressure fallback, a fixed 8K summary cap, or adaptive headroom.
 
 Do not load bcp/bcp-lean or another context-rewriting extension alongside DCP. The project configuration in this checkout disables those packages locally. This release is distributed through GitHub; npm publication is pending.
+
+## Updating an existing installation
+
+In pi 1.5.2, `pi update` alone updates **pi itself**. Use `pi update --extensions` to update installed packages, or `pi update <source>` to update one package.
+
+| Installed source | Update behavior |
+|---|---|
+| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b1` | Pinned to b1; package updates do not advance it to b2 |
+| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b2` | Pinned to b2; package updates do not select a future release |
+| `git:github.com/HanqingTony/dsh-compact-pi` | Follows the default branch (`main`), including changes between tagged releases |
+| Local checkout | Uses local files; pi does not fetch a new release for that path |
+
+To upgrade a pinned b1 installation to the Esc cancellation fix in b2, run on the machine where pi is installed (for example, 101's WSL):
+
+```bash
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b2
+```
+
+To follow `main` instead, replace the pinned source once, then update packages as needed:
+
+```bash
+pi install git:github.com/HanqingTony/dsh-compact-pi
+pi update --extensions
+# Or update only DCP:
+pi update git:github.com/HanqingTony/dsh-compact-pi
+```
+
+After changing or updating the installed package, restart pi or run `/reload` while idle, then `/dcp-status` to verify the loaded version. Updating files on disk does not replace code already loaded by a running session. Keep only one DCP source in `pi list`; remove a previous local registration with `pi remove <old-source>` when switching to GitHub. Global and project-local package settings can both load extensions, so check both if commands or handlers appear twice.
+
+See [CHANGELOG.md](CHANGELOG.md) for fixes in each build and [the publishing guide](docs/publishing.md) for maintainer release steps.
 
 ## Compatibility scope
 
