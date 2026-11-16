@@ -1,16 +1,20 @@
 /** Project the DSH session surface back into pi model messages. */
 
-import type { Session } from '@deepseek-ai/dsh-session'
+import type { Session } from '../../vendor/dsh-runtime.mjs'
 import { dshMessageToPi, type PiMessage } from './messages.ts'
 
-export function projectSurface(session: Session): PiMessage[] {
+export function projectSurface(
+  session: Session,
+  imageToPi?: (image: any) => any,
+): PiMessage[] {
   const toolNames = new Map<string, string>()
   for (const seq of session.surface.nodes) {
     const event = session.eventAt(seq)
     const message: any = event ? session.deriveEventMessage(event) : undefined
     if (message?.role !== 'assistant') continue
     for (const block of message.content ?? []) {
-      if (block?.type === 'tool-call' && block.id) toolNames.set(String(block.id), String(block.name ?? ''))
+      if (block?.type === 'tool-call' && block.id)
+        toolNames.set(String(block.id), String(block.name ?? ''))
     }
   }
 
@@ -20,7 +24,12 @@ export function projectSurface(session: Session): PiMessage[] {
     if (!event) continue
     const message = session.deriveEventMessage(event)
     if (!message) continue
-    const mapped = dshMessageToPi(message as any, event.time, toolNames)
+    const mapped = dshMessageToPi(
+      message as any,
+      event.time,
+      toolNames,
+      imageToPi,
+    )
     if (mapped) out.push(mapped)
   }
   return out

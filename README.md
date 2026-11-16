@@ -1,177 +1,129 @@
-# zcp — z's compact
+# dsh-compact-pi (dcp)
 
-Run **DeepSeek Harness's real compaction engine** on pi, with a native
-DSH-format session codec, the DSH tool-result pruner, and overflow recovery.
+An installable pi extension hosting **unmodified DeepSeek Harness compaction plugins in real Cordis**. DCP adapts a defined common subset of pi and DSH; its source updater copies upstream files without rewriting imports or patching the compression algorithm.
 
-> v0.1.0. Tested against pi 1.5.0 and deepseek-harness 0.2.2-rc.1. The DSH
-> compaction transaction is imported verbatim, not reimplemented.
+Requires pi 1.5.2 and Node.js >=24.9.0 (matching the upstream source runtime requirement). DCP's version uses the upstream DSH base version plus its own build number: currently **0.2.2b1** (DSH base 0.2.2, DCP build 1). The npm SemVer is `0.2.2-b1`; `/dcp-status` and Ctrl+O display `0.2.2b1`. Subsequent DCP builds increment `b2`, `b3`, etc., independently of the upstream snapshot. The exact DSH snapshot is 0.2.2-rc.1, pinned in [vendor/manifest.json](vendor/manifest.json) and shown separately by `/dcp-status`. Running or building DCP does not require a DSH checkout.
 
-## What it does
-
-- **Native DSH session codec for plain `pi`.** `scripts/patch-pi.mjs` patches
-  pi's session manager so `pi` writes DSH v4 JSONL
-  (`{"type":"session","version":4,...}` + `turn/start`, `user/message`,
-  `assistant/message`, `tool/call`, `tool/result`, ...). `pi --continue` reads
-  it back. Old pi-format sessions upgrade on their next append.
-- **Real DSH compaction.** `BasicCompactionEngine.compactRegion()` from
-  `@deepseek-ai/dsh-compaction-basic` runs on a real
-  `@deepseek-ai/dsh-session` `Session` and appends real
-  `compaction/start` → `compaction/summary` → `surfaceOp: replace` checkpoint
-  → `compaction/end`.
-- **Native compaction is cancelled** by `session_before_compact`.
-- **Real DSH tool-result pruner.** Oversized tool results become
-  `compaction/prune` + a head/middle/tail replacement before range selection.
-- **Overflow recovery.** `agent_end` detects context/length errors;
-  `agent_before_settle` compacts and requests one continuation. At 95% of the
-  window it compacts proactively.
-- **Commands**: `/dsh-status`, `/dsh-compact`.
-
-## Architecture
-
-### Native mode (recommended): one DSH file
-
-```
-plain pi
-  │  patched SessionManager
-  │    loadEntriesFromFile: DSH -> pi entries
-  │    _persist:             pi entry -> DSH event
-  ▼
-<session>.jsonl  (DSH v4)
-  │
-  └─ zcp context hook
-       1. reload the DSH file when pi appended
-       2. pressure -> pruner + BasicCompactionEngine.compactRegion()
-       3. projectSurface(DSH) -> pi messages
-       4. write the compacted DSH file
-```
-
-zcp detects the native DSH file and uses it as the canonical log; no
-`.dsh/` sidecar is written in this mode.
-
-### Plugin-only mode: sidecar
-
-Without the pi patch, pi writes pi JSONL and zcp keeps:
-`<session-dir>/.dsh/<name>.jsonl` (plus `.meta.json`). The `.dsh/` subdirectory
-is hidden from pi's session scanner.
-
-## Install
+## Install and use
 
 ```bash
-cd /home/tony/zrepo/zcp
-
-# build the plugin, codec, and CLIs
-npm run build
-
-# install the native codec into pi (backs up the originals)
-node scripts/patch-pi.mjs
-
-# load the compression plugin for one run
-pi --no-extensions -e ./dist/index.js
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b1
 ```
 
-Remove the core patch at any time:
+Restart pi or `/reload`, then `/dcp-status`. The Git tag pins this release. To follow future releases on the default branch, use `pi install git:github.com/HanqingTony/dsh-compact-pi`. Before switching from a local DCP installation, use `pi list` and `pi remove <old-source>` to remove the old package entry and avoid loading DCP twice. To install a development checkout, use `pi install /absolute/path/to/dsh-compact-pi`. For one run:
 
 ```bash
-node scripts/patch-pi.mjs --restore
+pi --no-extensions -e /absolute/path/to/dsh-compact-pi/dist/index.js
 ```
-
-The patch is version-specific: re-run it after a pi upgrade. It copies the
-self-contained codec to `<pi>/dist/dsh-pi-codec.mjs`, so the patched pi does
-not need this checkout at runtime.
-
-## Project configuration
-
-This repo is also a project-scoped pi workspace. `.pi/settings.json`:
-
-- disables the global `billion-context-pi-lean` (bcp-lean) and
-  `billion-context-pi` (bcp) packages for this project via
-  `autoload: false` filters;
-- activates zcp from the repo root.
-
-Run pi from this directory and approve the project once:
-
-```bash
-cd /home/tony/zrepo/zcp
-pi
-```
-
-The project settings only apply after project trust; `pi --approve` trusts for
-one run.
-
-Do **not** load bcp / bcp-lean / billion-context alongside zcp: all of them
-cancel native compaction and rewrite the request.
-
-## Commands
 
 | Command | Behavior |
 |---|---|
-| `/dsh-status` | DSH event count, surface count, estimated tokens, threshold/retain, file path, native/sidecar mode |
-| `/dsh-compact` | Force one DSH compaction now |
+| `/dcp-status` | Loaded versions, policy budgets and compatibility scope |
+| `/dcp-compact` | Manual upstream `compactNow()` through pi's compaction controller; idle only, no arguments |
+| `/compact` | Pi's standard command intercepted by DCP; use while idle, without instructions |
 
-## Cross-format tools
+Automatic pressure checks use DSH's `agent/pre-step` listener. Overflow decisions and budgets belong to DSH's `agent/request-error` listener. Manual compaction uses DSH's `compactNow()`, including its persistence checkpoint. DCP does not add manual pre-pruning, an emergency pressure fallback, a fixed 8K summary cap, or adaptive headroom.
+
+Do not load bcp/bcp-lean or another context-rewriting extension alongside DCP. The project configuration in this checkout disables those packages locally. This release is distributed through GitHub; npm publication is pending.
+
+## Compatibility scope
+
+The supported comparison scenario is a **fixed physical model, text, user/tool-result images and ordinary tool messages, and no user input during compaction**. Submitted input is rejected with a retry-later notice rather than queued by DCP. PNG/JPEG/WebP/GIF images participate in upstream summarization and image offloading. General file attachments, assistant image output and virtual routing remain outside this scope: DCP preserves the original context and explicitly reports the unsupported capability. It never silently replaces DSH with pi's default summarizer.
+
+Pi retains its own session format, branches, names, labels and extension state. DCP records request changes through `pi.appendEntry` before using them; at a safe boundary it also emits native `context_edit`/`compaction` entries. Pi is the sole writer of that session file. Existing `dcp`/`zcp` checkpoint records remain readable.
+
+The adapter compares the finalized model-visible context, not original streaming timings or byte-identical provider payloads. Pi's native manual-compaction admission check still runs before the extension hook. Advanced routing, general file-attachment offload, input queuing and exact provider cache behavior are not emulated. See the precise contract in [docs/compatibility.md](docs/compatibility.md).
+
+## Ctrl+O diagnostics
+
+Expand a `[compaction]` card with `Ctrl+O`. Its display identifies DCP, pi native, or another extension. New DCP cards show plugin/DSH version, trigger, summary model, token estimates, message counts, summary/prune/image-offload counts and duration. The renderer adds this information only to the display, not to the saved summary or model context. Historical records without these fields are identified as historical rather than attributed to the currently loaded version.
+
+## Images
+
+User images and tool screenshots no longer disable compaction. The unmodified DSH local attachment backend validates and normalizes them into durable references; the summary request reads those references as real images. Images in the retained tail remain available. Text pruning preserves accompanying pictures.
+
+The unmodified `compaction-image-offload` plugin handles image-count/encoded-byte admission failures in both the main request and summary request. It omits the oldest image occurrences and records permanent `image/offload` decisions. Placeholders name the attachment and its normalized read-only path. The decision survives cancellation after commit, restart and native pi context edits; a later read can introduce a fresh image occurrence.
+
+The compatibility adapter uses pi's declared `inputLimits.images.maxPerRequest` / `maxPerMessage`; absent a request count limit it uses the upstream pi-ai default of 50, with a 20 MiB base64-image budget. Summary request versions follow the upstream 4-megapixel / 1 MiB defaults, further constrained by pi's declared resize dimensions/byte cap. Unstructured remote provider errors are not guessed into image-offload counts. A text-only summary model is rejected when its selected prefix still contains retained images.
+
+The upstream pi-ai adapter does not declare exact image-token pricing. DCP likewise uses upstream attachment-reference heuristics and provider usage anchors; it never charges the base64 string as text tokens. Before a usable provider sample, this can underestimate visual pressure.
+
+For persistent pi sessions, normalized objects live under `.dcp-assets/` beside the session file; in-memory sessions use the configured pi agent directory (default `~/.pi/agent`). The backend writes its request cache under that same attachment home. Keep those objects if you need the read-only recovery paths. No automatic asset garbage collection is provided. `sharp` is a production dependency and uses its platform-specific native binaries.
+
+`dcp-session pi2dsh` writes valid attachment references to `DSH_HOME` (default `~/.dsh`) and keeps the byte-exact pi archive. Foreign DSH imports read that same attachment store and replay offloads before embedding retained images into pi; missing assets fail explicitly. The legacy synchronous core codec has no automatic attachment resolution; use the CLI for image sessions.
+
+## Configuration
+
+Optional `.pi/dcp.json`:
+
+```json
+{
+  "policy": {
+    "thresholdRatio": 0.8,
+    "retainRatio": 0.16,
+    "compactionRetries": 1,
+    "maxOverflowRetries": 1
+  },
+  "audit": true
+}
+```
+
+`policy` is passed to upstream without extra DCP policy defaults. DSH's default headroom is **65,536** tokens, and omitted `maxTokens` inherits headroom. These are output upper bounds, not target summary lengths. Exact `modelPolicies`, paired summarization model/provider overrides, and `retainTokens` instead of `retainRatio` use upstream validation. `auto: false` leaves only manual compaction enabled. `.pi/zcp.json` is accepted if the new filename is absent.
+
+Small-window models need an explicit policy that fits their model budget. For example, for a 32K context model reserving 8K output:
+
+```json
+{
+  "policy": {
+    "headroomTokens": 2048,
+    "maxTokens": 4096,
+    "retainTokens": 4096
+  }
+}
+```
+
+Retention settings apply to automatic pressure. Manual compaction follows upstream's zero-retention-budget selection, preserving only the last balanced tail. `audit: false` omits detailed DSH events but retains checkpoint replay/provenance. Reload after configuration changes.
+
+## Updating upstream
 
 ```bash
-# real DSH v4 session (even .zstd) -> pi session
-zcp-session dsh2pi <session.v4.jsonl.zstd> <out.pi.jsonl>
-pi --session <out.pi.jsonl>
-
-# pi session -> DSH v4 session
-zcp-session pi2dsh <pi.jsonl> <out.dsh.jsonl>
-
-# launch pi on a DSH file without the core patch
-zcp --session <dsh.jsonl> [pi args...]
+npm ci
+npm run vendor:dsh -- /path/to/deepseek-harness
+npm run vendor:verify -- /path/to/deepseek-harness
+npm run check
+npm run test:package
 ```
 
-## Validation
+The updater traverses **source** imports, copies the required TS/JS and dependency files byte-for-byte into `vendor/dsh-source/`, records import resolutions and SHA-256 hashes, and builds from that local copy. It does not use DSH's `lib/` artifacts and does not modify source imports. Normal builds verify the copied files and rebuild the kernel without consulting the upstream checkout.
 
-- `test/bridge.test.ts` — real engine, real `Session`, event/projection checks.
-- `test/host.test.ts` — mock pi context, sidecar reload, overflow flag.
-- `test/pruner.test.ts` — real DSH pruner (`compaction/prune`, 14,841 chars
-  removed from a 20k-char tool result).
-- `test/codec.test.ts` — sync codec write/read/append.
-- `test/convert.test.ts` — pi ↔ DSH round-trip.
+The pi compatibility layer lives in `src/dsh/engine.ts`, `src/dsh/llm.ts`, `src/dsh/sync.ts` and `src/bridge.ts`. It supplies model I/O, maps pi operations to Cordis events and translates persisted projections. Compatible upstream changes require no compression-source edits. A changed service/export contract can still require adapter/resolver updates; failed checks must be resolved before shipping. Details: [docs/upstream-update.md](docs/upstream-update.md).
 
-Live checks:
+## Validation and packaging
 
-- Plain patched `pi` writes `version: 4` DSH JSONL; `--continue` resumes with
-  contiguous `seq`.
-- zcp + native codec + 12K-window model produced a real automatic compaction
-  in the native file (`compaction/start`, `compaction/summary`, checkpoint,
-  `compaction/end`), summary beginning with DSH's
-  `## Primary Request and Intent`.
-- A real DSH v4 session (`session.v4.jsonl.zstd`, 1,884 events / 408 messages)
-  converted to pi JSONL; pi → DSH → pi preserved all 408 messages.
-- An old pi-format session upgraded to DSH on its next append, seq contiguous.
-
-## Limitations (v0.1.0)
-
-- Text/tool surface; images are mapped but not tested; reasoning signatures
-  are dropped.
-- `context_edit`, branch/tree, and non-message entries (`model_change`,
-  `thinking_level_change`, `session_info`, `label`, `usage`, native
-  `compaction`) are not fully mapped into DSH.
-- The native file may end with an open turn; DSH repair handles it on import.
-- Summary target is the current pi model via `modelRegistry.complete`.
-- No zstd write; converters read `.jsonl.zstd`.
-- The pi patch is tied to pi 1.5.0's function shapes and must be re-applied
-  after upgrades.
-- Do not run bcp / bcp-lean / billion-context together with zcp.
-
-## Layout
-
-```
-src/index.ts          pi hooks, commands
-src/bridge.ts         native/sidecar mode, sync, compaction, overflow
-src/dsh/              DSH Session <-> pi mapping, engine, store
-src/codec.ts          synchronous codec imported by the patched pi
-scripts/patch-pi.mjs  install/restore the pi session-manager patch
-bin/dsh-session.ts    zcp-session CLI source
-bin/pi-dsh.ts         zcp launcher source
-dist/index.js         bundled plugin
-dist/codec.mjs        bundled codec (copied into pi on patch)
+```bash
+npm run check          # strict typecheck, source rebuild, tests and real pi SDK integration
+npm run test:package   # package, isolated install, copied-source rebuild, pi install/load
 ```
 
-## License / attribution
+Differential tests compare the adapter with direct upstream Cordis plugin execution: summary input/budget, logical selected spans, prune/replace events, final surfaces, no-op/failure results, flush checkpoints and retry decisions. Runtime IDs/timestamps and host-specific seed offsets are excluded. Other tests cover real TypeBox tool schemas, usage pricing, durability, branches, Ctrl+O, cancellation, scope rejection and input rejection. Provider replies are deterministic stubs; paid live-model fidelity benchmarks are not implied.
 
-MIT for the adapter and CLI. DSH packages are BSD-3-Clause; pi is MIT. DSH
-code is imported and keeps its license/attribution.
+The distributable is `dsh-compact-pi-0.2.2-b1.tgz`. It can be installed with `npm install ./dsh-compact-pi-0.2.2-b1.tgz`, followed by `pi install /absolute/path/to/node_modules/dsh-compact-pi`. It contains the copied source closure and built extension.
+
+For npm/Git publication, version tags and public installation instructions, see [the publishing guide](docs/publishing.md). Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
+## Session conversion
+
+```bash
+dcp-session dsh2pi old.dsh.jsonl imported.pi.jsonl
+pi --session imported.pi.jsonl
+dcp-session pi2dsh session.pi.jsonl exported.dsh.jsonl
+dcp --session old.dsh.jsonl
+```
+
+The launcher imports into a new pi file and preserves the source DSH file. Pi-origin exports retain exact pi entries in ignorable `plugin:dcp/pi-header` and `plugin:dcp/pi-entry` records, including legacy `plugin:zcp` records on import. Foreign DSH imports use their active message surface; DSH-only UI state and attachment-store references are not a complete pi session translation. `.zstd` reading requires the `zstd` command; compressed writing is unsupported.
+
+If an old v0.1 core codec patch is installed, export needed sessions and restore it with `node scripts/patch-pi.mjs --restore` before using the normal extension. See [migration details](docs/native-session-codec.md).
+
+## License
+
+MIT. Upstream licenses and source provenance are in `vendor/LICENSE-DeepSeek`, `vendor/LICENSE-pi`, `vendor/THIRD-PARTY-NOTICES` and `vendor/manifest.json`.

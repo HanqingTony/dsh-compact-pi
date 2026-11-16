@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 zcp contributors
+Copyright (c) 2026 dcp contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,4 +21,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Portions of this project import code from DeepSeek Harness, licensed under
-BSD-3-Clause; see the upstream package headers for their notices.
+MIT; see vendor/LICENSE-DeepSeek. Additional bundled dependencies retain their
+respective licenses; see vendor/THIRD-PARTY-NOTICES and vendor/LICENSE-pi.

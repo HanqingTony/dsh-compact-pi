@@ -12,11 +12,19 @@ export type PiContentBlock =
   | { type: 'image'; data: string; mimeType: string }
   | { type: 'toolCall'; id: string; name: string; arguments: unknown }
 
-export type PiMessage =
+export type PiMessage = (
   | { role: 'user'; content: string | PiContentBlock[]; timestamp?: number }
   | { role: 'assistant'; content: PiContentBlock[]; timestamp?: number }
-  | { role: 'toolResult'; toolCallId: string; toolName?: string; content: PiContentBlock[]; isError?: boolean; timestamp?: number }
+  | {
+      role: 'toolResult'
+      toolCallId: string
+      toolName?: string
+      content: PiContentBlock[]
+      isError?: boolean
+      timestamp?: number
+    }
   | { role: 'system'; content: string; timestamp?: number }
+) & { [key: string]: any }
 
 export interface DshContentBlock {
   type: string
@@ -43,9 +51,13 @@ export function newId(): string {
   return globalThis.crypto.randomUUID()
 }
 
-export function piContentToDsh(content: PiMessage['content']): DshContentBlock[] {
+export function piContentToDsh(
+  content: PiMessage['content'],
+  imageToDsh?: (image: any) => DshContentBlock,
+): DshContentBlock[] {
   if (typeof content === 'string') return [{ type: 'text', text: content }]
-  if (!Array.isArray(content)) return [{ type: 'text', text: String(content ?? '') }]
+  if (!Array.isArray(content))
+    return [{ type: 'text', text: String(content ?? '') }]
   const out: DshContentBlock[] = []
   for (const block of content) {
     if (!block || typeof block !== 'object') continue
@@ -54,18 +66,27 @@ export function piContentToDsh(content: PiMessage['content']): DshContentBlock[]
         out.push({ type: 'text', text: block.text })
         break
       case 'thinking':
-        out.push({ type: 'reasoning', text: block.thinking })
+        out.push({
+          type: 'reasoning',
+          text: block.thinking,
+          piSignature: block.thinkingSignature,
+        })
         break
       case 'toolCall':
         out.push({
           type: 'tool-call',
           id: block.id,
           name: block.name,
-          arguments: typeof block.arguments === 'string' ? block.arguments : JSON.stringify(block.arguments ?? {}),
+          arguments:
+            typeof block.arguments === 'string'
+              ? block.arguments
+              : JSON.stringify(block.arguments ?? {}),
         })
         break
       case 'image':
-        out.push({ type: 'image', data: block.data, mimeType: block.mimeType })
+        if (!imageToDsh)
+          throw new Error('dcp: image conversion requires an attachment bridge')
+        out.push(imageToDsh(block))
         break
       default:
         break
@@ -74,7 +95,10 @@ export function piContentToDsh(content: PiMessage['content']): DshContentBlock[]
   return out
 }
 
-export function dshContentToPi(content: DshContentBlock[] | undefined): PiContentBlock[] {
+export function dshContentToPi(
+  content: DshContentBlock[] | undefined,
+  imageToPi?: (image: DshContentBlock) => PiContentBlock | PiContentBlock[],
+): PiContentBlock[] {
   const out: PiContentBlock[] = []
   for (const block of content ?? []) {
     if (!block || typeof block !== 'object') continue
@@ -83,7 +107,13 @@ export function dshContentToPi(content: DshContentBlock[] | undefined): PiConten
         out.push({ type: 'text', text: String(block.text ?? '') })
         break
       case 'reasoning':
-        out.push({ type: 'thinking', thinking: String(block.text ?? '') })
+        out.push({
+          type: 'thinking',
+          thinking: String(block.text ?? ''),
+          ...(block.piSignature
+            ? { thinkingSignature: String(block.piSignature) }
+            : {}),
+        })
         break
       case 'tool-call': {
         let args: unknown = {}
@@ -92,13 +122,18 @@ export function dshContentToPi(content: DshContentBlock[] | undefined): PiConten
         } catch {
           args = {}
         }
-        out.push({ type: 'toolCall', id: String(block.id ?? ''), name: String(block.name ?? ''), arguments: args })
+        out.push({
+          type: 'toolCall',
+          id: String(block.id ?? ''),
+          name: String(block.name ?? ''),
+          arguments: args,
+        })
         break
       }
       case 'image':
-        if (typeof block.data === 'string' && typeof block.mimeType === 'string') {
-          out.push({ type: 'image', data: block.data, mimeType: block.mimeType })
-        }
+        if (!imageToPi)
+          throw new Error('dcp: image conversion requires an attachment bridge')
+        out.push(...[imageToPi(block)].flat())
         break
       default:
         break
@@ -107,16 +142,26 @@ export function dshContentToPi(content: DshContentBlock[] | undefined): PiConten
   return out
 }
 
-export function dshMessageToPi(message: DshMessage, time: number, toolNames?: Map<string, string>): PiMessage | undefined {
+export function dshMessageToPi(
+  message: DshMessage,
+  time: number,
+  toolNames?: Map<string, string>,
+  imageToPi?: (image: DshContentBlock) => PiContentBlock | PiContentBlock[],
+): PiMessage | undefined {
+  const original = message.source?.pi as Record<string, any> | undefined
   switch (message.role) {
     case 'system':
       return undefined // pi replays its own prompt/tools
     case 'user':
-      return { role: 'user', content: dshContentToPi(message.content), timestamp: time }
+      return {
+        ...original,
+        role: 'user',
+        content: dshContentToPi(message.content, imageToPi),
+        timestamp: original?.timestamp ?? time,
+      }
     case 'assistant':
       return {
         role: 'assistant',
-        content: dshContentToPi(message.content),
         // pi's getContextUsage() calls calculateContextTokens(message.usage)
         // for every non-aborted/error assistant; a missing usage would crash it.
         api: 'dsh',
@@ -132,19 +177,22 @@ export function dshMessageToPi(message: DshMessage, time: number, toolNames?: Ma
         },
         stopReason: 'stop',
         timestamp: time,
+        ...original,
+        content:
+          original?.content ?? dshContentToPi(message.content, imageToPi),
       }
     case 'tool': {
-      const text = (message.content ?? [])
-        .filter((b) => b.type === 'text')
-        .map((b) => String(b.text ?? ''))
-        .join('\n')
       return {
         role: 'toolResult',
         toolCallId: String(message.toolCallId ?? message.source?.callId ?? ''),
-        toolName: toolNames?.get(String(message.toolCallId ?? message.source?.callId ?? '')) ?? '',
-        content: text ? [{ type: 'text', text }] : [],
+        toolName:
+          toolNames?.get(
+            String(message.toolCallId ?? message.source?.callId ?? ''),
+          ) ?? '',
+        ...original,
+        content: dshContentToPi(message.content, imageToPi),
         isError: message.isError === true,
-        timestamp: time,
+        timestamp: original?.timestamp ?? time,
       }
     }
     default:

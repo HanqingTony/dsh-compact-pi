@@ -1,18 +1,32 @@
 {
-  "name": "zcp",
-  "version": "0.1.0",
+  "name": "dsh-compact-pi",
+  "version": "0.2.2-b1",
+  "dcpVersion": "0.2.2b1",
   "type": "module",
-  "description": "z's compact — run DeepSeek Harness compaction on pi with a native DSH session codec",
+  "description": "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HanqingTony/dsh-compact-pi.git"
+  },
+  "homepage": "https://github.com/HanqingTony/dsh-compact-pi#readme",
+  "bugs": {
+    "url": "https://github.com/HanqingTony/dsh-compact-pi/issues"
+  },
   "main": "dist/index.js",
   "scripts": {
-    "build": "npm run build:plugin && npm run build:codec && npm run build:cli",
-    "build:plugin": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --external:@earendil-works/pi-coding-agent",
-    "build:codec": "esbuild src/codec.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/codec.mjs",
-    "build:cli": "esbuild bin/dsh-session.ts bin/pi-dsh.ts --bundle --platform=node --format=esm --target=node20 --outdir=dist --out-extension:.js=.mjs --banner:js='#!/usr/bin/env node'",
-    "test": "tsx test/bridge.test.ts && tsx test/host.test.ts && tsx test/pruner.test.ts && tsx test/codec.test.ts && tsx test/convert.test.ts",
-    "convert": "node dist/dsh-session.mjs",
-    "patch": "node scripts/patch-pi.mjs",
-    "unpatch": "node scripts/patch-pi.mjs --restore"
+    "build": "node scripts/check-vendor.mjs && node scripts/build-vendor.mjs && npm run build:plugin && npm run build:codec && npm run build:cli",
+    "build:plugin": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --external:@earendil-works/pi-coding-agent",
+    "build:codec": "esbuild src/codec.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/codec.mjs",
+    "build:cli": "esbuild bin/dcp-session.ts bin/dcp.ts --bundle --platform=node --format=esm --target=node22 --outdir=dist --out-extension:.js=.mjs --banner:js='#!/usr/bin/env node'",
+    "test": "tsx --test test/*.test.ts",
+    "convert": "node dist/dcp-session.mjs",
+    "unpatch": "node scripts/patch-pi.mjs --restore",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run typecheck && npm run build",
+    "vendor:dsh": "node scripts/vendor-dsh.mjs",
+    "check": "npm run typecheck && npm run build && npm test",
+    "test:package": "node scripts/smoke-package.mjs",
+    "vendor:verify": "node scripts/check-vendor.mjs --upstream"
   },
   "pi": {
     "extensions": [
@@ -20,21 +34,28 @@
     ]
   },
   "bin": {
-    "zcp": "./dist/pi-dsh.mjs",
-    "zcp-session": "./dist/dsh-session.mjs"
+    "dcp": "dist/dcp.mjs",
+    "dcp-session": "dist/dcp-session.mjs"
   },
   "files": [
     "dist",
+    "vendor",
     "src",
     "bin",
     "scripts",
     "docs",
     "README.md",
-    "LICENSE"
+    "CHANGELOG.md",
+    "LICENSE",
+    "test",
+    "tsconfig.json"
   ],
   "devDependencies": {
-    "esbuild": "^0.28.2",
-    "tsx": "^4.23.13"
+    "@earendil-works/pi-coding-agent": "1.5.2",
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
   },
   "keywords": [
     "pi-package",
@@ -43,5 +64,33 @@
     "context-management",
     "deepseek-harness",
     "dsh"
-  ]
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "beta"
+  },
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@earendil-works/pi-agent-core": {
+      "optional": true
+    },
+    "@earendil-works/pi-ai": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "sharp": "0.35.5"
+  }
 }

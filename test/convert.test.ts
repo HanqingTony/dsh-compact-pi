@@ -14,8 +14,20 @@ const dshFile = path.join(dir, 'session.dsh.jsonl')
 const backFile = path.join(dir, 'session.back.jsonl')
 
 const piRows = [
-  { type: 'session', version: 3, id: 'convert-test', timestamp: new Date().toISOString(), cwd: '/tmp' },
-  { type: 'message', id: 'u1', parentId: null, timestamp: new Date().toISOString(), message: { role: 'user', content: long('question') } },
+  {
+    type: 'session',
+    version: 3,
+    id: 'convert-test',
+    timestamp: new Date().toISOString(),
+    cwd: '/tmp',
+  },
+  {
+    type: 'message',
+    id: 'u1',
+    parentId: null,
+    timestamp: new Date().toISOString(),
+    message: { role: 'user', content: long('question') },
+  },
   {
     type: 'message',
     id: 'a1',
@@ -27,12 +39,22 @@ const piRows = [
       api: 'dsh',
       provider: 'fake',
       model: 'fake',
-      usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 1,
+        output: 1,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 2,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
       stopReason: 'stop',
     },
   },
 ]
-await fs.writeFile(piFile, piRows.map((row) => JSON.stringify(row)).join('\n') + '\n')
+await fs.writeFile(
+  piFile,
+  piRows.map((row) => JSON.stringify(row)).join('\n') + '\n',
+)
 
 const toDsh = await piToDsh(piFile, dshFile)
 assert.equal(toDsh.messages, 2)
@@ -49,4 +71,8 @@ assert.equal(back.entries.length, 2)
 assert.equal(back.entries[0].message.role, 'user')
 assert.equal(back.entries[1].message.role, 'assistant')
 
-console.log('convert ok', { dshEvents: dsh!.events.length, backEntries: back.entries.length, dir })
+console.log('convert ok', {
+  dshEvents: dsh!.events.length,
+  backEntries: back.entries.length,
+  dir,
+})

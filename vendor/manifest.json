@@ -1,0 +1,3438 @@
+{
+  "upstream": "https://github.com/deepseek-ai/deepseek-harness",
+  "commit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+  "version": "0.2.2-rc.1",
+  "sourceDirectory": "dsh-source",
+  "inputs": [
+    {
+      "file": "dependencies/zod@4.4.3/index.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/index.js",
+      "sha256": "c733a1897d6b4b30dad6998597f6896b265b094a65534359ada34b08ecf8932c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/package.json",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/package.json",
+      "sha256": "c630bd10b52dcf71c112a2bf78dbf2734b9db58d62de663b8d86c2ec2c8cda2e"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/checks.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/checks.js",
+      "sha256": "78a162d29e06001b4d919e1ed08f6e7d0d665bba0ef983201373745410d7b354"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/coerce.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/coerce.js",
+      "sha256": "fb2efe3b6eacc475c77cbb571b5fb8650d92a10f316dc869e49b722973d83c3c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/compat.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/compat.js",
+      "sha256": "0e948b101771cc0e7b753e54b3f5b486929d3db9bd4c09d98fe4ce86271bcf7b"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/errors.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/errors.js",
+      "sha256": "b155316267f79068ddc2dddc7046e13785804b768ca36e6deff1691d154f7c20"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/external.js",
+      "sha256": "179a03ace3d1d77895cc5b3c54a3fcbf2b7f8bad44d6f030092491c10e5d9097"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/from-json-schema.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/from-json-schema.js",
+      "sha256": "d8866bf5232e55d12cda032bde6a56a05a0a8b276945c2e4eed66432ef5cc9b2"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/iso.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/iso.js",
+      "sha256": "3cc5e6b4da086b8ffc7ee3188c69e4d3c945b368092e78d2299b5321182752c5"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/parse.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/parse.js",
+      "sha256": "14cbcc416ab9169abc2cde97af77da54ca769684eac1e03a3753c16ea4a7cd95"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/schemas.js",
+      "sha256": "eb4af7946a092aff8678b9251728ea58dab40154920cd65ec4a2ca1d4df68393"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/api.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/api.js",
+      "sha256": "00cb5edcfde8098e5a169e66c1dce50c101484d21436e3d78e137e1fa87c4836"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/checks.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/checks.js",
+      "sha256": "5a33a20dcad372b4d18ead8d1e58b1950454f136a2216e62f247e0e5601ac838"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/core.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/core.js",
+      "sha256": "a5e713beaac4647151e03716a83f51ab714e5337cf66850f3b28eaf072a0bbfe"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/doc.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/doc.js",
+      "sha256": "e084bbcc536746a8942fd33b08afe4db345554b3a0383114f1dca95261c958d9"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/errors.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/errors.js",
+      "sha256": "bdd0ed8fd4a6e9d04fe6423b0f9df3a0b403939bc7dcedd8930a4b8df1fb118c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/index.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/index.js",
+      "sha256": "f9698820ee8371215e8d015cfa060230c62e65428397dce83f78e6538976301c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/json-schema-generator.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/json-schema-generator.js",
+      "sha256": "9cc884cdb535a9c87b85b66e61a593ff6b686222f038834f81c5e92552cd6e23"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/json-schema-processors.js",
+      "sha256": "ff15f567c9401dd7d3151ce11736283ff747c9a9e205cc08ee96f90eadc1c0c6"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/json-schema.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/json-schema.js",
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/parse.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/parse.js",
+      "sha256": "2578b8d1341c3882a6c089f9ec57ce1c1a16b8b2b477721d4d89ba3d3ee50c9c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/regexes.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/regexes.js",
+      "sha256": "3cb122080c1154321331322ebc0cbe04878fe104c8c7b335891d9f85fc4b3f63"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/registries.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/registries.js",
+      "sha256": "620ea1a715ccc4e6e605a271343bf47942dccae90885dc71f137b1f08a972e50"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/schemas.js",
+      "sha256": "09da9b0cb9b9d2d795c349bc47c7521d5aaffe241885f0c9728f2aa7de3834c9"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/to-json-schema.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/to-json-schema.js",
+      "sha256": "fb3c9ab59947582f7671a53c8e20a3ced5eaa92d1c220ce8b27717a59033ad0d"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/util.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/util.js",
+      "sha256": "968e3433e810cf7ba5efb609a1cb6d9a6cfb51215fd1f699938228f7ac25deb3"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/core/versions.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/versions.js",
+      "sha256": "bf082fde98fa7725412d713c7f56da3a5603bdef199d68d5769263f30ce9c756"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ar.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ar.js",
+      "sha256": "220ca3ca8cf67e4ccc05d789eeed2692d970269fe0cd82f05db8fd899b661b9e"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/az.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/az.js",
+      "sha256": "4725ffef0b2f2df947194f9698c792b69f52a8c3a5a1e1bdfabbf62259a1dd46"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/be.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/be.js",
+      "sha256": "da4bda7fbc940dd9f50efdd914caa9397243be779a505b82bd4be5395d3b795e"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/bg.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/bg.js",
+      "sha256": "48511ad2f86043f0eea6e7673d5e2b848a3295a26c9c4650e96b3884d640196d"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ca.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ca.js",
+      "sha256": "796f9ba7dcd53648171aa0132c50271ef358936765cec0a44a642c41d05b3e8c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/cs.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/cs.js",
+      "sha256": "670a75fe1db1104db090c95aabb01e4eb6decd451fe77fd830c2e4dafc79b49a"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/da.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/da.js",
+      "sha256": "cdaad7a1fa370abda1943fe9c2caba961e7896b9808d51275daf33f964af49cc"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/de.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/de.js",
+      "sha256": "521a4ed29fcaf3f781163875dc282cfb5262047773aa2b70a852996b1d8a51b9"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/el.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/el.js",
+      "sha256": "9857a9e4909282b2efd86317fc3e67ed86e24287f32329cfa5ab833c05fc0d81"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/en.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/en.js",
+      "sha256": "232a0828d64df8e410b23ac9825a667bd9d485fd70acdc4b4d0870539faef0a4"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/eo.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/eo.js",
+      "sha256": "ebe08048aa3ee9871ce9fe1271e254cb672b1968ec40ac253066d08d176e8a65"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/es.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/es.js",
+      "sha256": "4edd9302e9724c408b024220e99092fbd2f90100ac3c6407a94543b79843610c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/fa.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/fa.js",
+      "sha256": "2dc1bee1e984e8a15191fb3c69aaecaa26c922e12a0d4486ac005a0372b78565"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/fi.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/fi.js",
+      "sha256": "3911184979f01d2ae580ce611710ee40597eff97a410d0fa823ab6ea27cee88c"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/fr-CA.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/fr-CA.js",
+      "sha256": "f8716c2baaccdfd1d958743bbc5250c9bdef5152d0801470e9b9a380d618f4ab"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/fr.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/fr.js",
+      "sha256": "3ea466ca5737984bb5acc9008822060272f596317004618cfe1e05109f707577"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/he.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/he.js",
+      "sha256": "290512e43d2907700211da09dc3959fd98d120bfb89f8836e6e3f83a472e26fe"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/hr.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/hr.js",
+      "sha256": "1ea65433c32b89bead43113ac69b3acc520bb73ae231dd2e05fedf8e8c5656d6"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/hu.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/hu.js",
+      "sha256": "913ee94a253db79b31463ae23a337060b6fe28be73dfc7657d8a83a4942bd8a8"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/hy.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/hy.js",
+      "sha256": "0d3bbb96c0f8bc74468a2dfc7d066e838bb56fab64fd5ec03ce9c4d89eccbe99"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/id.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/id.js",
+      "sha256": "cd2c19b5c30dade3ed91ffcff3deb0b068713be24f02248e7e46b87b2b9553ee"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/index.js",
+      "sha256": "d73f41a76614855d43eea493030a1aa05dca30c9a17015a0da5b8b70da61b6b1"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/is.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/is.js",
+      "sha256": "ead5b14eac892229f915fe38ec94ab3b1e676f8aa2df2a8450848ba9ca9a1612"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/it.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/it.js",
+      "sha256": "439969d199427d77ebf1e477bf2295b226712804b25437d442f9dfc78aca95e0"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ja.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ja.js",
+      "sha256": "43ee10378cac22b0b8aee912a66c3f36a834d5b4c76e9748f88a784044f248fd"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ka.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ka.js",
+      "sha256": "0ab5322368f9ac6e6b58f93dac484a4f4f06cdf4c0677f4df88164e9d8b4bf81"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/kh.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/kh.js",
+      "sha256": "78c3d1991041bb8c8fc0f7c5d745aae422d4c2e4e8f30bae44f3fef4765900a8"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/km.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/km.js",
+      "sha256": "dbdabda94dd93d4a1827e6c809505c79fa6aa7abefec91dc50fa0871382c99cc"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ko.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ko.js",
+      "sha256": "d2efe22ac069d9b32b0109fa07713ac0695ac1c1357afc4e4277056466f2e196"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/lt.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/lt.js",
+      "sha256": "dad886e52c56a1329d22e072f8b08dc8730f69c3dc5e5acf8267cac18df1ab28"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/mk.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/mk.js",
+      "sha256": "9eb4af0392fc5b9c438cdc6ceea446acc541b59e221dba918f7b80800d9da3d1"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ms.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ms.js",
+      "sha256": "c550a9185d997e8fcd17311951aa1e29793a50b8e825e18310efd5a46c641795"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/nl.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/nl.js",
+      "sha256": "acba414579c5bbd7f83dc6661fa1a12d65f1822f9b0f5035549ac60f46d93763"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/no.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/no.js",
+      "sha256": "1854483c7cf158b8f97f0faf6fd799eb1f762009018b5fde893ca33f2fb0b313"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ota.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ota.js",
+      "sha256": "34ae496104bc17fea7d30c3d45c94cfe3d1d569b5d39a6ca51de6c177690c556"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/pl.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/pl.js",
+      "sha256": "18eab58f395e30b906e8e3fddc5f212eb19f2c4362410889a5c5e0141ebe2144"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ps.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ps.js",
+      "sha256": "f977b5141fa8fb6a8459372e0b2895d74b381c9f2ff4899141f7ee3e639a4513"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/pt.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/pt.js",
+      "sha256": "df172afc585544dee7c063c484f5a07b5ed103e2c1072a782c763ad8ceb08e17"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ro.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ro.js",
+      "sha256": "ecae409f4299ab91e2aff1095db14e23f3cf2c05b3654e242047655352c7f46b"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ru.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ru.js",
+      "sha256": "c397a473e94d7d189a9c09c7890fe379c4f6f46d9556d52a040a90ffa56f7b93"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/sl.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/sl.js",
+      "sha256": "ee2ff3a19b62cd2f89b54b165088773b937de15df7253df220bef07d9adf2d80"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/sv.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/sv.js",
+      "sha256": "97d6718fb643e05d6fe30fa4f9f09b8d9a3eda4a3a350b57dfb2944943d19502"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ta.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ta.js",
+      "sha256": "04bbde9766251f9047e786fdd77632f2ecd53aec2eb060eb2fc85bf576ad729d"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/th.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/th.js",
+      "sha256": "aea70c9ac2b399fe4749e19ba3aa99c3efb4dfb50eadfb62b0b2a6e005748f3d"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/tr.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/tr.js",
+      "sha256": "4449f41d22c6f15ede5066f79d840a52ec45a6b694c859e16f9121062b6fad2f"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ua.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ua.js",
+      "sha256": "9391169ffbc72f777a83230b6ffcc3f4cf46ab5945ec540de9ef4609dca1f4cc"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/uk.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/uk.js",
+      "sha256": "77136a2a60eef62f7cc803a0f9971aebbc641403af77c1b41fd5ce59abfa5de3"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/ur.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/ur.js",
+      "sha256": "858f4f38d651073e7a3fbec7ed356692578b3ad1fae1b453cb3d85312a4f39d2"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/uz.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/uz.js",
+      "sha256": "d540bed482d15c47cb45439cff34e053379c53019c7c7c5fbe43f222d0c81f04"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/vi.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/vi.js",
+      "sha256": "2c61bd3f4a733f3cbb1ad85e75a053cb15a8ebeb83ab56dc21f2948b1138e12f"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/yo.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/yo.js",
+      "sha256": "98b9cbf31bf00c8b2c00de62725a9dd7cb718ac72d6e8fd4e0a1a7c49723e0f4"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/zh-CN.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/zh-CN.js",
+      "sha256": "99a4b16af598834a0b11607fcdebd1c6de026386ff1d6a5a306b364c154c5899"
+    },
+    {
+      "file": "dependencies/zod@4.4.3/v4/locales/zh-TW.js",
+      "upstreamFile": "node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/locales/zh-TW.js",
+      "sha256": "37dcae620e1553e9174a4b9434bbcc4e465150a627e80c9c17fd01de8baaf59a"
+    },
+    {
+      "file": "packages/attachment/attachment-local/package.json",
+      "upstreamFile": "packages/attachment/attachment-local/package.json",
+      "sha256": "32c0116f6950d1153ea2ff73b0de03fda64438b829c2382428e428e4e475589c"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/compression-limiter.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/compression-limiter.ts",
+      "sha256": "b25712ad14609b27f2e1c0d8118eafe7be0adb2180ce40739a02f1fd75722063"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/encoding.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/encoding.ts",
+      "sha256": "6404620aaa9ccf87fdfcdb6302c2be09b666b76dd755a8f0f761c5890a7c9921"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/file-store.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/file-store.ts",
+      "sha256": "8826c8ea6124c489c51c10bdc195f4f454b89370929e5d83c50e6232b2eef958"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/image.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/image.ts",
+      "sha256": "ec48db7f7702bb06317c10c393c1fc6a8ec0927f87f63021f419f015dd69827f"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/index.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/index.ts",
+      "sha256": "4e2a7e494100253fc4d1107e99dc7e7459fec9d42b77e8e377af28bf59d3a7ac"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/normalization.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/normalization.ts",
+      "sha256": "3d1b849628f0c827497bac800af49272ac8c5b64be4c59d96bc9f0c23d76fffa"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/request-image.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/request-image.ts",
+      "sha256": "bbb89a0150520a8c73d96fa884066e4b2cc82085864c5899500e45bd6aac889e"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/sharp.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/sharp.ts",
+      "sha256": "6735e559022dccabc257c72af8e9d12b18bbd2c717503cbee84a125274e374de"
+    },
+    {
+      "file": "packages/attachment/attachment-local/src/store.ts",
+      "upstreamFile": "packages/attachment/attachment-local/src/store.ts",
+      "sha256": "d685538bd4c16272141d3cb45d472341d45c3f0e2d51c2edf20075a3773b8177"
+    },
+    {
+      "file": "packages/attachment/attachment/package.json",
+      "upstreamFile": "packages/attachment/attachment/package.json",
+      "sha256": "0beee0ca4584d8dba00a76cca69b9b3b7de651139c7472de5a6ca0ce66e3bae4"
+    },
+    {
+      "file": "packages/attachment/attachment/src/admission.ts",
+      "upstreamFile": "packages/attachment/attachment/src/admission.ts",
+      "sha256": "34d6453071f95e639fed9c9c23f6b59418f9b523ec2fe554b304e5bf6c03341b"
+    },
+    {
+      "file": "packages/attachment/attachment/src/brand.ts",
+      "upstreamFile": "packages/attachment/attachment/src/brand.ts",
+      "sha256": "558fa7aca6f787a568ca27d6bb7c5eb4747d56c811c625d4cb78d4885630064f"
+    },
+    {
+      "file": "packages/attachment/attachment/src/error.ts",
+      "upstreamFile": "packages/attachment/attachment/src/error.ts",
+      "sha256": "ee24eb3fd7538212e7c95b4a4167ad28637df58b2f70549661630ae71eca2517"
+    },
+    {
+      "file": "packages/attachment/attachment/src/index.ts",
+      "upstreamFile": "packages/attachment/attachment/src/index.ts",
+      "sha256": "24a1d29fe275adbb7d4efb0417eb0f56bcf06576f0003259f1c492f840f1ca6f"
+    },
+    {
+      "file": "packages/attachment/attachment/src/request-projection.ts",
+      "upstreamFile": "packages/attachment/attachment/src/request-projection.ts",
+      "sha256": "9601939cf6b7d887444d4ef2f2af64299880d2e7c2b699d0d04fdaa9ec555d72"
+    },
+    {
+      "file": "packages/compaction/compaction-basic/package.json",
+      "upstreamFile": "packages/compaction/compaction-basic/package.json",
+      "sha256": "91c9785f8b3ed0063fdb7d509ca21c88180c82592b034ca26e0eb7169abb0865"
+    },
+    {
+      "file": "packages/compaction/compaction-basic/src/config.ts",
+      "upstreamFile": "packages/compaction/compaction-basic/src/config.ts",
+      "sha256": "4972edc6447dcff87eab54c3a9c5984171238aa06aa0eb34ffde4bfac4ce1275"
+    },
+    {
+      "file": "packages/compaction/compaction-basic/src/index.ts",
+      "upstreamFile": "packages/compaction/compaction-basic/src/index.ts",
+      "sha256": "1d2ecc563147967f86842b37289682a4dd7feabccc9d9d8d55cfb01810166f54"
+    },
+    {
+      "file": "packages/compaction/compaction-basic/src/region.ts",
+      "upstreamFile": "packages/compaction/compaction-basic/src/region.ts",
+      "sha256": "295b53cc9e924f7cb2e843e0d0d296e89ead73da2aab9790282db30736e2e063"
+    },
+    {
+      "file": "packages/compaction/compaction-basic/src/summarizer.ts",
+      "upstreamFile": "packages/compaction/compaction-basic/src/summarizer.ts",
+      "sha256": "03ef6eb0b6a011530829820e30ff709c2c1b34cfa37a98c19c0037432b9d2f55"
+    },
+    {
+      "file": "packages/compaction/compaction-image-offload/package.json",
+      "upstreamFile": "packages/compaction/compaction-image-offload/package.json",
+      "sha256": "92cdcaaf4189adebe61ef8b7868cdae46a1f2172438dfbcdce1c41b0c4b706da"
+    },
+    {
+      "file": "packages/compaction/compaction-image-offload/src/image-offload.ts",
+      "upstreamFile": "packages/compaction/compaction-image-offload/src/image-offload.ts",
+      "sha256": "e41285733e5c748b67055c74441170b5a959b9032820e1c5e9cf27a583e31b6a"
+    },
+    {
+      "file": "packages/compaction/compaction-image-offload/src/index.ts",
+      "upstreamFile": "packages/compaction/compaction-image-offload/src/index.ts",
+      "sha256": "86afdc7d1843fed07423c9d535ea8a55cdb18fddfc6798d3a132f1a1e5d0dbcf"
+    },
+    {
+      "file": "packages/compaction/compaction-image-offload/src/project-message.ts",
+      "upstreamFile": "packages/compaction/compaction-image-offload/src/project-message.ts",
+      "sha256": "b7f65a1b6e6bcd854d60c76a40018c578439d7dfd33ce8ae9815ea5160a6cf5e"
+    },
+    {
+      "file": "packages/compaction/compaction-image-offload/src/projection.ts",
+      "upstreamFile": "packages/compaction/compaction-image-offload/src/projection.ts",
+      "sha256": "b3f1d52de96af237af9e95fcfdc51a9efb3121f269c696bacf0a9618b72fe4ca"
+    },
+    {
+      "file": "packages/compaction/compaction-tool-result-pruner/package.json",
+      "upstreamFile": "packages/compaction/compaction-tool-result-pruner/package.json",
+      "sha256": "feb6c364f0666ce306525f50f0a49e0ee3450492160351e7bf3f04c0a67e7230"
+    },
+    {
+      "file": "packages/compaction/compaction-tool-result-pruner/src/config.ts",
+      "upstreamFile": "packages/compaction/compaction-tool-result-pruner/src/config.ts",
+      "sha256": "8538c8b2b3bd7b2b085a86119b694f7934e308a5c4b7f4406e963b190b6eaa98"
+    },
+    {
+      "file": "packages/compaction/compaction-tool-result-pruner/src/index.ts",
+      "upstreamFile": "packages/compaction/compaction-tool-result-pruner/src/index.ts",
+      "sha256": "2890f336ca42f9d8259794eebbc4a9423f69a7394c41796b9981216ed29ed536"
+    },
+    {
+      "file": "packages/compaction/compaction/package.json",
+      "upstreamFile": "packages/compaction/compaction/package.json",
+      "sha256": "f95819dbf3c90db2f4f63d4837140420d142b33c207981859bc30f019c399ad6"
+    },
+    {
+      "file": "packages/compaction/compaction/src/brand.ts",
+      "upstreamFile": "packages/compaction/compaction/src/brand.ts",
+      "sha256": "f27af81196216a6a50faf5e15da75cdb0935e47e2e78dc3d3fc7ce2dd6733a82"
+    },
+    {
+      "file": "packages/compaction/compaction/src/checkpoint.ts",
+      "upstreamFile": "packages/compaction/compaction/src/checkpoint.ts",
+      "sha256": "194c6f7bf0b0a403837cff2815c37f657b35a7713b5a354cb40f64dfb42a44e3"
+    },
+    {
+      "file": "packages/compaction/compaction/src/index.ts",
+      "upstreamFile": "packages/compaction/compaction/src/index.ts",
+      "sha256": "1d50528c7daf5950e79d7edb2fabca48da6682fc536e911c9f64e4d0bdea4ba1"
+    },
+    {
+      "file": "packages/compaction/compaction/src/tool-pairing.ts",
+      "upstreamFile": "packages/compaction/compaction/src/tool-pairing.ts",
+      "sha256": "30916d32b421553a7753aa56f5e5890bdfa2bf41b0ce3c8f42bd529fd2da4b9a"
+    },
+    {
+      "file": "packages/core/scope/package.json",
+      "upstreamFile": "packages/core/scope/package.json",
+      "sha256": "d1fae17dd3f31be92c5244bb4a667325b17e4b0462f4b9d0f42421490c1c2dbb"
+    },
+    {
+      "file": "packages/core/scope/src/index.ts",
+      "upstreamFile": "packages/core/scope/src/index.ts",
+      "sha256": "074b8f0c3fa2e240effd0a7e65c54be7c14debc1e53bb712334ce20d15affe4a"
+    },
+    {
+      "file": "packages/core/scope/src/store.ts",
+      "upstreamFile": "packages/core/scope/src/store.ts",
+      "sha256": "e2f6c98e271cbae483393ccd1e5212a255def165a8a591d308efbd827af67278"
+    },
+    {
+      "file": "packages/core/session/package.json",
+      "upstreamFile": "packages/core/session/package.json",
+      "sha256": "8fbd7934cb82516c4e9d0187f4205b47bdbc0cf27acd3f8319a2f6d5fcd42f6b"
+    },
+    {
+      "file": "packages/core/session/src/fork.ts",
+      "upstreamFile": "packages/core/session/src/fork.ts",
+      "sha256": "de80ecbf0e6a7961c096a2d7f0304bc6f6c83f897268304e28352357da06bfb0"
+    },
+    {
+      "file": "packages/core/session/src/index.ts",
+      "upstreamFile": "packages/core/session/src/index.ts",
+      "sha256": "343eeb693620bf3de6d21fcecb685fb7288b623c0bd4f655f29a23e92ce2f634"
+    },
+    {
+      "file": "packages/core/session/src/known-event-types.ts",
+      "upstreamFile": "packages/core/session/src/known-event-types.ts",
+      "sha256": "862acc917dc2dd5e185640640c0747735e8b84c3fa65939738bac9a1d45e106b"
+    },
+    {
+      "file": "packages/core/session/src/preparation.ts",
+      "upstreamFile": "packages/core/session/src/preparation.ts",
+      "sha256": "51bcd61f505928fc1d98cc59ecfd5e0a34b3a5cbd3ecb7937caef0da87b7baa5"
+    },
+    {
+      "file": "packages/core/session/src/repair.ts",
+      "upstreamFile": "packages/core/session/src/repair.ts",
+      "sha256": "c2835c920aba203c709e44686e55f43bb4d357ea59cfef3561c371b8ff115540"
+    },
+    {
+      "file": "packages/core/session/src/request-header.ts",
+      "upstreamFile": "packages/core/session/src/request-header.ts",
+      "sha256": "abd8ef57c34ad6ddbc21ba83398092f6aff64ac5c0f38efb353cebb04f654ad4"
+    },
+    {
+      "file": "packages/core/session/src/seq-ranges.ts",
+      "upstreamFile": "packages/core/session/src/seq-ranges.ts",
+      "sha256": "9f746691995926cb17d3dd19da04871f2355be40c798ed5a8256659e6bf14559"
+    },
+    {
+      "file": "packages/core/session/src/surface.ts",
+      "upstreamFile": "packages/core/session/src/surface.ts",
+      "sha256": "5b5394dc02584cb3549330b358fbe5919d05f8a6920d90f6819bb7e3b4783154"
+    },
+    {
+      "file": "packages/core/session/src/tool-history.ts",
+      "upstreamFile": "packages/core/session/src/tool-history.ts",
+      "sha256": "53ae6aebe5ebe9b1eb782f008315db33ff637611093e40fa3529ec3019b56683"
+    },
+    {
+      "file": "packages/core/session/src/types.ts",
+      "upstreamFile": "packages/core/session/src/types.ts",
+      "sha256": "e0f0c064295404ce33d69936fa940f9e6d024803bbf66337ff2d3c71acb80df1"
+    },
+    {
+      "file": "packages/llm/llm/package.json",
+      "upstreamFile": "packages/llm/llm/package.json",
+      "sha256": "27b9a0ac2119d5ce1fadc1743e2c698adb9d42cf854149711233b9a45c1f2e7e"
+    },
+    {
+      "file": "packages/llm/llm/src/adapter-failure.ts",
+      "upstreamFile": "packages/llm/llm/src/adapter-failure.ts",
+      "sha256": "533507191d814fc7b3df5ae65076b2ebc4134bbb47a2bbd9bb7309d7e7f9241b"
+    },
+    {
+      "file": "packages/llm/llm/src/api-key.ts",
+      "upstreamFile": "packages/llm/llm/src/api-key.ts",
+      "sha256": "16bf926a82b0c0c1d4adbee78e2a1eebe260f100285795edb8330f3fe46141a4"
+    },
+    {
+      "file": "packages/llm/llm/src/assembler.ts",
+      "upstreamFile": "packages/llm/llm/src/assembler.ts",
+      "sha256": "a2d065645058a70195a504b101e9eed23df3eaced3def868d602f3a863b03887"
+    },
+    {
+      "file": "packages/llm/llm/src/assistant-stream.ts",
+      "upstreamFile": "packages/llm/llm/src/assistant-stream.ts",
+      "sha256": "9ff074108132ef0ffeefffd8e7967d05db4c6bef1689242807ef7a1d2105dfeb"
+    },
+    {
+      "file": "packages/llm/llm/src/attribution.ts",
+      "upstreamFile": "packages/llm/llm/src/attribution.ts",
+      "sha256": "44cc79c833cadc78ef0e124da87786bf9d7765f1409d885ec97b5e0e7d8f9ffb"
+    },
+    {
+      "file": "packages/llm/llm/src/brand.ts",
+      "upstreamFile": "packages/llm/llm/src/brand.ts",
+      "sha256": "a3a3f22174353af8aea34a9a439986530bffcc6df6339e55612fd5a1fa4fb14c"
+    },
+    {
+      "file": "packages/llm/llm/src/call-config.ts",
+      "upstreamFile": "packages/llm/llm/src/call-config.ts",
+      "sha256": "1b70454e4c6d579ebe2a24f76c25f22f90d4e9c7fb0c90f73afd731371962bd0"
+    },
+    {
+      "file": "packages/llm/llm/src/content.ts",
+      "upstreamFile": "packages/llm/llm/src/content.ts",
+      "sha256": "e679f0972cef3f6301c4a9f321ee288ef0a63223ec51c093349c186cdc81ff35"
+    },
+    {
+      "file": "packages/llm/llm/src/error.ts",
+      "upstreamFile": "packages/llm/llm/src/error.ts",
+      "sha256": "cd8657420bb84060ee45b1e72fa668df26b090532afd8afd2a96da983a74f792"
+    },
+    {
+      "file": "packages/llm/llm/src/index.ts",
+      "upstreamFile": "packages/llm/llm/src/index.ts",
+      "sha256": "92085d8eefac7990f8f8763b6470cba220c52ee30fc68344aae670904337271c"
+    },
+    {
+      "file": "packages/llm/llm/src/message.ts",
+      "upstreamFile": "packages/llm/llm/src/message.ts",
+      "sha256": "5826fb32bc3d6e2221a7a39cc8b4fecc57282540a332417bb9f2ac3522b5c7da"
+    },
+    {
+      "file": "packages/llm/llm/src/retry-policy.ts",
+      "upstreamFile": "packages/llm/llm/src/retry-policy.ts",
+      "sha256": "eee2423a0152096026446dd651f29678e0c504f0349a91758720f01f74efa871"
+    },
+    {
+      "file": "packages/llm/llm/src/types.ts",
+      "upstreamFile": "packages/llm/llm/src/types.ts",
+      "sha256": "cfe8237e84d7d8f3f5192773ad70927e1ff930a9ac536ca79a40207da791429a"
+    },
+    {
+      "file": "packages/llm/token-meter/package.json",
+      "upstreamFile": "packages/llm/token-meter/package.json",
+      "sha256": "73530f19b73aa99e7352bab7034a4942aa81ebdf87478ab9a74cc78c1a2d4a2b"
+    },
+    {
+      "file": "packages/llm/token-meter/src/breakdown-projection.ts",
+      "upstreamFile": "packages/llm/token-meter/src/breakdown-projection.ts",
+      "sha256": "b743855c3ec03d94e7aa784b4f2ae328dfc9903d2b9adb133fb610857edec561"
+    },
+    {
+      "file": "packages/llm/token-meter/src/estimate.ts",
+      "upstreamFile": "packages/llm/token-meter/src/estimate.ts",
+      "sha256": "30ecc576a77aa3a65fb8173c551e13d7651ddba2d7bbd907845a003f17ee189d"
+    },
+    {
+      "file": "packages/llm/token-meter/src/index.ts",
+      "upstreamFile": "packages/llm/token-meter/src/index.ts",
+      "sha256": "9c9fd53d119cd80b6c03a0db1a7ac45197d2c384df3cf39ce9584584302b49bc"
+    },
+    {
+      "file": "packages/llm/token-meter/src/measurement-projection.ts",
+      "upstreamFile": "packages/llm/token-meter/src/measurement-projection.ts",
+      "sha256": "ebc797bdf7376d4f1aea475b6178b9dbaeade966af079903638e6a0334f6125d"
+    },
+    {
+      "file": "packages/llm/token-meter/src/route-pricing.ts",
+      "upstreamFile": "packages/llm/token-meter/src/route-pricing.ts",
+      "sha256": "4201c430b66e12fd40dcf264034bbc517cb73867f4b31a68b90c8a3ff3210840"
+    },
+    {
+      "file": "packages/llm/token-meter/src/surface-fold.ts",
+      "upstreamFile": "packages/llm/token-meter/src/surface-fold.ts",
+      "sha256": "686f597a7fdc9d45394c68eb8ef4f472094978d2483b597ee2a1def210dfb878"
+    },
+    {
+      "file": "packages/llm/token-meter/src/surface-projection.ts",
+      "upstreamFile": "packages/llm/token-meter/src/surface-projection.ts",
+      "sha256": "c8e21bd071831992ab3d8790f2647a24ca6fbafae4e05580b2ed9a0e97a02ec4"
+    },
+    {
+      "file": "packages/llm/token-meter/src/usage-projection.ts",
+      "upstreamFile": "packages/llm/token-meter/src/usage-projection.ts",
+      "sha256": "37eef359b829e533e08dae37e21ca4cd6a0eee995e9d630509bc98e2f60e9888"
+    },
+    {
+      "file": "packages/session/session-projection/package.json",
+      "upstreamFile": "packages/session/session-projection/package.json",
+      "sha256": "bc729a9ab13670c9d1cc78cac0a47b9a8dfc4177785b6b7784d19ae86a062f3a"
+    },
+    {
+      "file": "packages/session/session-projection/src/index.ts",
+      "upstreamFile": "packages/session/session-projection/src/index.ts",
+      "sha256": "d82d1fc1f92893d97c9ec729039e7d77fbccb8a7c005a70cfe61c7924c590525"
+    },
+    {
+      "file": "packages/typert/protocol/package.json",
+      "upstreamFile": "packages/typert/protocol/package.json",
+      "sha256": "a3e53cede097b48a56e37af042463d3071b1427d5ae09756795d172401daeb93"
+    },
+    {
+      "file": "packages/typert/protocol/src/index.ts",
+      "upstreamFile": "packages/typert/protocol/src/index.ts",
+      "sha256": "ad89508f0790243d6519693e2a80b40e3712745c11b0e64d8767b8670f516925"
+    },
+    {
+      "file": "packages/typert/protocol/src/json-value.ts",
+      "upstreamFile": "packages/typert/protocol/src/json-value.ts",
+      "sha256": "c5d58b60b7e085004041326055737f7e718e719f5df7b7df5b09d2fb147e57c0"
+    },
+    {
+      "file": "packages/typert/protocol/src/owned-value.ts",
+      "upstreamFile": "packages/typert/protocol/src/owned-value.ts",
+      "sha256": "096c583e2093cd814d0cef5bc3f8161f6aabfe8cfe97eff78c3a340c0c95a44d"
+    },
+    {
+      "file": "packages/typert/protocol/src/principal.ts",
+      "upstreamFile": "packages/typert/protocol/src/principal.ts",
+      "sha256": "3af661e55a7f3f3ad11fac0d35abe4fba5529fc7054ec923dbd05dc56326c1e9"
+    },
+    {
+      "file": "packages/typert/protocol/src/remote-error.ts",
+      "upstreamFile": "packages/typert/protocol/src/remote-error.ts",
+      "sha256": "bb902ec537e1dfbc74885e77a01192e6532b50a959a5bc4cc55c1fbf52e0a368"
+    },
+    {
+      "file": "packages/typert/protocol/src/remote-info.ts",
+      "upstreamFile": "packages/typert/protocol/src/remote-info.ts",
+      "sha256": "e89fc959e61271aa57366b8c64a56278099e58e7d82936a2fc305398e507f79d"
+    },
+    {
+      "file": "packages/util/brand/package.json",
+      "upstreamFile": "packages/util/brand/package.json",
+      "sha256": "f244edb07329228171fe946b483df78d6ee6be87dbbaffee42b9a392c92c37bf"
+    },
+    {
+      "file": "packages/util/brand/src/index.ts",
+      "upstreamFile": "packages/util/brand/src/index.ts",
+      "sha256": "f9d6da858d7308117227dcc2306ce7246b7309b2ae22d413d289cbae51e83e98"
+    },
+    {
+      "file": "packages/util/crypto/package.json",
+      "upstreamFile": "packages/util/crypto/package.json",
+      "sha256": "a8ecf7b6e7e13edc2887305ec5af4c3bff7e505a22f328135b9b9b6348533713"
+    },
+    {
+      "file": "packages/util/crypto/src/index.ts",
+      "upstreamFile": "packages/util/crypto/src/index.ts",
+      "sha256": "6d314b677a163808a732c53fc509eebea1f8b8cc34b67031644dcfa4a97e28f0"
+    },
+    {
+      "file": "packages/util/home-paths/package.json",
+      "upstreamFile": "packages/util/home-paths/package.json",
+      "sha256": "15a8ee6d1027ee64ba462b45a558adb781aed908424a3a45213a81fa86d99021"
+    },
+    {
+      "file": "packages/util/home-paths/src/index.ts",
+      "upstreamFile": "packages/util/home-paths/src/index.ts",
+      "sha256": "143a1583d9f5203f000da672de1dd27fe9994db9332d8c25f101c149c91cb643"
+    },
+    {
+      "file": "packages/util/lazy-require/package.json",
+      "upstreamFile": "packages/util/lazy-require/package.json",
+      "sha256": "6f21c5bf53670b8d6369d188964ab204a34accef5fa1068cb9edb96a7b8faab4"
+    },
+    {
+      "file": "packages/util/lazy-require/src/index.ts",
+      "upstreamFile": "packages/util/lazy-require/src/index.ts",
+      "sha256": "3453ea694b03c110b366c4d6c18ff6f2d32004ded38cd43ceb89c3ed7aa11fdf"
+    },
+    {
+      "file": "packages/util/timeout/package.json",
+      "upstreamFile": "packages/util/timeout/package.json",
+      "sha256": "214fd236ad53b36ade6d0da23aa0c690c247080deb05551d437622a265358343"
+    },
+    {
+      "file": "packages/util/timeout/src/index.ts",
+      "upstreamFile": "packages/util/timeout/src/index.ts",
+      "sha256": "cadc1aea5b85854f59ca68cee8b7d08c4ebdd378d1c8e081e0031423c262e6b1"
+    },
+    {
+      "file": "packages/util/values/package.json",
+      "upstreamFile": "packages/util/values/package.json",
+      "sha256": "d1b62e5f741332741b81c38709a954909ac81824ccd53b4ba20fcc7e9924b4a4"
+    },
+    {
+      "file": "packages/util/values/src/index.ts",
+      "upstreamFile": "packages/util/values/src/index.ts",
+      "sha256": "28a44a8df506ff9481de968135b8b20c240d7771f331bdc9e8cd634d04758858"
+    },
+    {
+      "file": "packages/util/values/src/partial-json.ts",
+      "upstreamFile": "packages/util/values/src/partial-json.ts",
+      "sha256": "d06228f26e0c670dc18615082b5be283f72a1562220c977c3c5d54edc0b5971e"
+    },
+    {
+      "file": "vendor/cordis/package.json",
+      "upstreamFile": "vendor/cordis/package.json",
+      "sha256": "f2f434042ae760e4a19a792873a174c9c69b5a984d0a3a196a0b5cfc42e1f2f1"
+    },
+    {
+      "file": "vendor/cordis/src/context.ts",
+      "upstreamFile": "vendor/cordis/src/context.ts",
+      "sha256": "fd5a4f1d2bc6b8b34729c87fda7639a07759ce07fb070ab05374acbcb9ccdc0e"
+    },
+    {
+      "file": "vendor/cordis/src/events.ts",
+      "upstreamFile": "vendor/cordis/src/events.ts",
+      "sha256": "a464c843822da4eb31a8d998c5e2216a817b8a7dfeacb6e1aab7f830e7320d6b"
+    },
+    {
+      "file": "vendor/cordis/src/fiber.ts",
+      "upstreamFile": "vendor/cordis/src/fiber.ts",
+      "sha256": "b64c3a97f15f0381479dcf3d25965e56dc4cecfa4a0881fc055a49f65b9945df"
+    },
+    {
+      "file": "vendor/cordis/src/index.ts",
+      "upstreamFile": "vendor/cordis/src/index.ts",
+      "sha256": "071fb226e9a21556625e4391b28e6641b9b34b1cd402155246e0437993d8b740"
+    },
+    {
+      "file": "vendor/cordis/src/logger.ts",
+      "upstreamFile": "vendor/cordis/src/logger.ts",
+      "sha256": "a6836ace311d0bd1abc9c1211cffcba73eff61c89ca47641efd82d91747401cb"
+    },
+    {
+      "file": "vendor/cordis/src/reflect.ts",
+      "upstreamFile": "vendor/cordis/src/reflect.ts",
+      "sha256": "047f01fcdef2aa34b4afc39deaf18c16733fabd2a5ef0d55e5c2595b22caadfd"
+    },
+    {
+      "file": "vendor/cordis/src/registry.ts",
+      "upstreamFile": "vendor/cordis/src/registry.ts",
+      "sha256": "34bbd60ae502b4f85201c204afb52a9acabde6878d9278493478c1b2183debd3"
+    },
+    {
+      "file": "vendor/cordis/src/service.ts",
+      "upstreamFile": "vendor/cordis/src/service.ts",
+      "sha256": "614205c6ce7cf1a057b8b352e96aa4fcd734c967a3d2283a126c9c61f268e3be"
+    },
+    {
+      "file": "vendor/cordis/src/utils.ts",
+      "upstreamFile": "vendor/cordis/src/utils.ts",
+      "sha256": "c68bab85514ebd8cb08227367ea306b0109a214cd10965c497474eeadaaca756"
+    },
+    {
+      "file": "vendor/cosmokit/package.json",
+      "upstreamFile": "vendor/cosmokit/package.json",
+      "sha256": "7a1ed1aa96cb336f397efbc62bcc24d85828ad9e1892323fa15d94721d1e9711"
+    },
+    {
+      "file": "vendor/cosmokit/src/array.ts",
+      "upstreamFile": "vendor/cosmokit/src/array.ts",
+      "sha256": "cf4de899ecffd66a90d8cef6f4c7d127d31f77f776d8e173d41c30d2d7632cf7"
+    },
+    {
+      "file": "vendor/cosmokit/src/index.ts",
+      "upstreamFile": "vendor/cosmokit/src/index.ts",
+      "sha256": "1087da74b9c461984e547d524ee766eebcf329a78e4720bff5b60a004ccf6e8c"
+    },
+    {
+      "file": "vendor/cosmokit/src/misc.ts",
+      "upstreamFile": "vendor/cosmokit/src/misc.ts",
+      "sha256": "117617943074ea57c15f216905dacd2f6d1c4c2ff16586f97a7a7a87dbf2141f"
+    },
+    {
+      "file": "vendor/cosmokit/src/string.ts",
+      "upstreamFile": "vendor/cosmokit/src/string.ts",
+      "sha256": "5564272b3e15e49235cbe3a8b453f27306baf282d23a893982841670f65d3c04"
+    },
+    {
+      "file": "vendor/cosmokit/src/time.ts",
+      "upstreamFile": "vendor/cosmokit/src/time.ts",
+      "sha256": "49957c4608465a1fbd738186a92c47fffcd1fc4ba59dbf89524f8a773fe16fe2"
+    },
+    {
+      "file": "vendor/cosmokit/src/types.ts",
+      "upstreamFile": "vendor/cosmokit/src/types.ts",
+      "sha256": "cc49c12e4a637f7b0754ff78a8299e9c42fa40ee8c678550af0c538a80146a92"
+    },
+    {
+      "file": "vendor/cosmokit/src/volatile.ts",
+      "upstreamFile": "vendor/cosmokit/src/volatile.ts",
+      "sha256": "937433215595f89da249ec7cabb89e331ff4135a40c6686a95666d2095315e55"
+    },
+    {
+      "file": "vendor/schemastery/package.json",
+      "upstreamFile": "vendor/schemastery/package.json",
+      "sha256": "0229c7870c40fe6c33b8b3224ea835c5c5cb2194503d596d0b56121ec71c5ae0"
+    },
+    {
+      "file": "vendor/schemastery/src/index.ts",
+      "upstreamFile": "vendor/schemastery/src/index.ts",
+      "sha256": "a6647b515659cf439b701fa9f9574c9c310ce3872d26a13a81e9fa4d02ba10ad"
+    }
+  ],
+  "resolutions": [
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-attachment-local",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction-basic",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction-basic/src/config.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/config.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction-basic/src/region.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/region.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction-image-offload",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-image-offload/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction-image-offload/projection",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-image-offload/src/projection.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction-tool-result-pruner",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-tool-result-pruner/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-compaction",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-session-projection",
+      "kind": "import-statement",
+      "target": "packages/session/session-projection/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-session/types",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "<entry>",
+      "specifier": "@deepseek-ai/dsh-token-meter",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/index.ts"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/index.js",
+      "specifier": "./v4/classic/external.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/external.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/checks.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/coerce.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/coerce.js",
+      "specifier": "./schemas.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/schemas.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/compat.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/errors.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/errors.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "../core/json-schema-processors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "../locales/en.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/en.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "../locales/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./checks.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/checks.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./coerce.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/coerce.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./compat.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/compat.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./errors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/errors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./from-json-schema.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/from-json-schema.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./iso.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/iso.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./parse.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/parse.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/external.js",
+      "specifier": "./schemas.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/schemas.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/from-json-schema.js",
+      "specifier": "../core/registries.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/registries.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/from-json-schema.js",
+      "specifier": "./checks.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/checks.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/from-json-schema.js",
+      "specifier": "./iso.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/iso.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/from-json-schema.js",
+      "specifier": "./schemas.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/schemas.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/iso.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/iso.js",
+      "specifier": "./schemas.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/schemas.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/parse.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/parse.js",
+      "specifier": "./errors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/errors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "specifier": "../core/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "specifier": "../core/json-schema-processors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "specifier": "../core/to-json-schema.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/to-json-schema.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "specifier": "./checks.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/checks.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "specifier": "./iso.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/iso.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/classic/schemas.js",
+      "specifier": "./parse.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/classic/parse.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/api.js",
+      "specifier": "./checks.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/checks.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/api.js",
+      "specifier": "./registries.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/registries.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/api.js",
+      "specifier": "./schemas.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/schemas.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/api.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/checks.js",
+      "specifier": "./core.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/core.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/checks.js",
+      "specifier": "./regexes.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/regexes.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/checks.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/errors.js",
+      "specifier": "./core.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/core.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/errors.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "../locales/index.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/index.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./api.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/api.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./checks.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/checks.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./core.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/core.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./doc.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/doc.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./errors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/errors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./json-schema-generator.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/json-schema-generator.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./json-schema-processors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./json-schema.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/json-schema.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./parse.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/parse.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./regexes.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/regexes.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./registries.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/registries.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./schemas.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/schemas.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./to-json-schema.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/to-json-schema.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/index.js",
+      "specifier": "./versions.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/versions.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/json-schema-generator.js",
+      "specifier": "./json-schema-processors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/json-schema-generator.js",
+      "specifier": "./to-json-schema.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/to-json-schema.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js",
+      "specifier": "./to-json-schema.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/to-json-schema.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/json-schema-processors.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/parse.js",
+      "specifier": "./core.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/core.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/parse.js",
+      "specifier": "./errors.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/errors.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/parse.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/regexes.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./checks.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/checks.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./core.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/core.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./doc.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/doc.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./parse.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/parse.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./regexes.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/regexes.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/schemas.js",
+      "specifier": "./versions.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/versions.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/to-json-schema.js",
+      "specifier": "./registries.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/registries.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/core/util.js",
+      "specifier": "./core.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/core.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ar.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/az.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/be.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/bg.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ca.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/cs.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/da.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/de.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/el.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/en.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/eo.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/es.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/fa.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/fi.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/fr-CA.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/fr.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/he.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/hr.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/hu.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/hy.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/id.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ar.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ar.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./az.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/az.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./be.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/be.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./bg.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/bg.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ca.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ca.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./cs.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/cs.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./da.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/da.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./de.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/de.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./el.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/el.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./en.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/en.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./eo.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/eo.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./es.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/es.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./fa.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/fa.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./fi.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/fi.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./fr-CA.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/fr-CA.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./fr.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/fr.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./he.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/he.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./hr.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/hr.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./hu.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/hu.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./hy.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/hy.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./id.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/id.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./is.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/is.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./it.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/it.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ja.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ja.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ka.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ka.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./kh.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/kh.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./km.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/km.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ko.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ko.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./lt.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/lt.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./mk.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/mk.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ms.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ms.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./nl.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/nl.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./no.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/no.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ota.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ota.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./pl.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/pl.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ps.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ps.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./pt.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/pt.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ro.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ro.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ru.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ru.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./sl.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/sl.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./sv.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/sv.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ta.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ta.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./th.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/th.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./tr.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/tr.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ua.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ua.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./uk.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/uk.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./ur.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/ur.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./uz.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/uz.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./vi.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/vi.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./yo.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/yo.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./zh-CN.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/zh-CN.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/index.js",
+      "specifier": "./zh-TW.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/zh-TW.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/is.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/it.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ja.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ka.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/kh.js",
+      "specifier": "./km.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/km.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/km.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ko.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/lt.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/mk.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ms.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/nl.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/no.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ota.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/pl.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ps.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/pt.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ro.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ru.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/sl.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/sv.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ta.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/th.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/tr.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ua.js",
+      "specifier": "./uk.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/locales/uk.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/uk.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/ur.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/uz.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/vi.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/yo.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/zh-CN.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "dependencies/zod@4.4.3/v4/locales/zh-TW.js",
+      "specifier": "../core/util.js",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/v4/core/util.js"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/file-store.ts",
+      "specifier": "./store.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/store.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/file-store.ts",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/file-store.ts",
+      "specifier": "node:crypto",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:crypto"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/file-store.ts",
+      "specifier": "node:fs",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:fs"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/file-store.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/image.ts",
+      "specifier": "./sharp.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/sharp.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/image.ts",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "./compression-limiter.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/compression-limiter.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "./file-store.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/file-store.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "./normalization.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/normalization.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "./request-image.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/request-image.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "./store.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/store.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-home-paths",
+      "kind": "import-statement",
+      "target": "packages/util/home-paths/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "@deepseek-ai/schemastery",
+      "kind": "import-statement",
+      "target": "vendor/schemastery/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/index.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/normalization.ts",
+      "specifier": "./encoding.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/encoding.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/normalization.ts",
+      "specifier": "./image.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/image.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/normalization.ts",
+      "specifier": "./sharp.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/sharp.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/normalization.ts",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "./encoding.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/encoding.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "./image.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/image.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "./sharp.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/sharp.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "node:crypto",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:crypto"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "node:fs/promises",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:fs/promises"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/sharp.ts",
+      "specifier": "@deepseek-ai/dsh-lazy-require",
+      "kind": "import-statement",
+      "target": "packages/util/lazy-require/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "./image.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/image.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "./normalization.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment-local/src/normalization.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "@deepseek-ai/dsh-attachment",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "node:crypto",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:crypto"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "node:fs",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:fs"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "node:fs/promises",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:fs/promises"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/admission.ts",
+      "specifier": "./error.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/error.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/admission.ts",
+      "specifier": "node:buffer",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:buffer"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/index.ts",
+      "specifier": "./admission.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/admission.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/index.ts",
+      "specifier": "./brand.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/brand.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/index.ts",
+      "specifier": "./error.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/error.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/index.ts",
+      "specifier": "./request-projection.ts",
+      "kind": "import-statement",
+      "target": "packages/attachment/attachment/src/request-projection.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment/src/index.ts",
+      "specifier": "node:buffer",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:buffer"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/config.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "./config.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/config.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "./region.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/region.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "./summarizer.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/summarizer.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-compaction",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "@deepseek-ai/schemastery",
+      "kind": "import-statement",
+      "target": "vendor/schemastery/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "./summarizer.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/summarizer.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "@deepseek-ai/dsh-compaction",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "node:crypto",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:crypto"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "node:util",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:util"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/summarizer.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/summarizer.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-image-offload/src/index.ts",
+      "specifier": "./image-offload.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-image-offload/src/image-offload.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-image-offload/src/index.ts",
+      "specifier": "./projection.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-image-offload/src/projection.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-image-offload/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-image-offload/src/project-message.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-image-offload/src/projection.ts",
+      "specifier": "./project-message.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-image-offload/src/project-message.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-tool-result-pruner/src/config.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-tool-result-pruner/src/index.ts",
+      "specifier": "./config.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-tool-result-pruner/src/config.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-tool-result-pruner/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-tool-result-pruner/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-tool-result-pruner/src/index.ts",
+      "specifier": "@deepseek-ai/schemastery",
+      "kind": "import-statement",
+      "target": "vendor/schemastery/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction/src/index.ts",
+      "specifier": "./brand.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction/src/brand.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction/src/index.ts",
+      "specifier": "./checkpoint.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction/src/checkpoint.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction/src/index.ts",
+      "specifier": "./tool-pairing.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction/src/tool-pairing.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/core/scope/src/index.ts",
+      "specifier": "./store.ts",
+      "kind": "import-statement",
+      "target": "packages/core/scope/src/store.ts"
+    },
+    {
+      "importer": "packages/core/scope/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/core/scope/src/store.ts",
+      "specifier": "./index.ts",
+      "kind": "import-statement",
+      "target": "packages/core/scope/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/fork.ts",
+      "specifier": "./repair.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/repair.ts"
+    },
+    {
+      "importer": "packages/core/session/src/fork.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./fork.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/fork.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./known-event-types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/known-event-types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./preparation.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/preparation.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./repair.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/repair.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./request-header.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/request-header.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./seq-ranges.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/seq-ranges.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./surface.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/surface.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./tool-history.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/tool-history.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-scope",
+      "kind": "import-statement",
+      "target": "packages/core/scope/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
+      "importer": "packages/core/session/src/repair.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/repair.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/repair.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/request-header.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/seq-ranges.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/surface.ts",
+      "specifier": "./known-event-types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/known-event-types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/surface.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/tool-history.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/types.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/adapter-failure.ts",
+      "specifier": "./error.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/error.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/assembler.ts",
+      "specifier": "./message.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/message.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/assembler.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/assembler.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/assistant-stream.ts",
+      "specifier": "./assembler.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/assembler.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/assistant-stream.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/attribution.ts",
+      "specifier": "node:module",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:module"
+    },
+    {
+      "importer": "packages/llm/llm/src/brand.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/content.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./adapter-failure.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/adapter-failure.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./api-key.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/api-key.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./assembler.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/assembler.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./assistant-stream.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/assistant-stream.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./attribution.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/attribution.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./brand.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/brand.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./call-config.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/call-config.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./content.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/content.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./error.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/error.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./message.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/message.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./retry-policy.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/retry-policy.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/types.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-typert-protocol",
+      "kind": "import-statement",
+      "target": "packages/typert/protocol/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/message.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/message.ts",
+      "specifier": "@deepseek-ai/dsh-util-crypto",
+      "kind": "import-statement",
+      "target": "packages/util/crypto/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/message.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/retry-policy.ts",
+      "specifier": "./error.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/error.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/retry-policy.ts",
+      "specifier": "@deepseek-ai/dsh-timeout",
+      "kind": "import-statement",
+      "target": "packages/util/timeout/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/retry-policy.ts",
+      "specifier": "@deepseek-ai/schemastery",
+      "kind": "import-statement",
+      "target": "vendor/schemastery/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/breakdown-projection.ts",
+      "specifier": "./estimate.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/estimate.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/breakdown-projection.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/breakdown-projection.ts",
+      "specifier": "zod",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/index.js"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "./breakdown-projection.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/breakdown-projection.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "./estimate.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/estimate.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "./measurement-projection.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/measurement-projection.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "./route-pricing.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/route-pricing.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "./surface-fold.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/surface-fold.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "./usage-projection.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/usage-projection.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/index.ts",
+      "specifier": "@deepseek-ai/schemastery",
+      "kind": "import-statement",
+      "target": "vendor/schemastery/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/measurement-projection.ts",
+      "specifier": "./estimate.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/estimate.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/measurement-projection.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/measurement-projection.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/measurement-projection.ts",
+      "specifier": "zod",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/index.js"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/route-pricing.ts",
+      "specifier": "./estimate.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/estimate.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/surface-fold.ts",
+      "specifier": "./estimate.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/estimate.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/surface-fold.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/surface-projection.ts",
+      "specifier": "./estimate.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/estimate.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/surface-projection.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/usage-projection.ts",
+      "specifier": "./surface-projection.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/token-meter/src/surface-projection.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/usage-projection.ts",
+      "specifier": "@deepseek-ai/dsh-llm",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/usage-projection.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/token-meter/src/usage-projection.ts",
+      "specifier": "zod",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.4.3/index.js"
+    },
+    {
+      "importer": "packages/session/session-projection/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/session/session-projection/src/index.ts",
+      "specifier": "@deepseek-ai/dsh-session",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/index.ts"
+    },
+    {
+      "importer": "packages/typert/protocol/src/index.ts",
+      "specifier": "./json-value.ts",
+      "kind": "import-statement",
+      "target": "packages/typert/protocol/src/json-value.ts"
+    },
+    {
+      "importer": "packages/typert/protocol/src/index.ts",
+      "specifier": "./owned-value.ts",
+      "kind": "import-statement",
+      "target": "packages/typert/protocol/src/owned-value.ts"
+    },
+    {
+      "importer": "packages/typert/protocol/src/index.ts",
+      "specifier": "./principal.ts",
+      "kind": "import-statement",
+      "target": "packages/typert/protocol/src/principal.ts"
+    },
+    {
+      "importer": "packages/typert/protocol/src/index.ts",
+      "specifier": "./remote-error.ts",
+      "kind": "import-statement",
+      "target": "packages/typert/protocol/src/remote-error.ts"
+    },
+    {
+      "importer": "packages/typert/protocol/src/index.ts",
+      "specifier": "./remote-info.ts",
+      "kind": "import-statement",
+      "target": "packages/typert/protocol/src/remote-info.ts"
+    },
+    {
+      "importer": "packages/typert/protocol/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
+    },
+    {
+      "importer": "packages/util/home-paths/src/index.ts",
+      "specifier": "node:fs/promises",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:fs/promises"
+    },
+    {
+      "importer": "packages/util/home-paths/src/index.ts",
+      "specifier": "node:os",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:os"
+    },
+    {
+      "importer": "packages/util/home-paths/src/index.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
+      "importer": "packages/util/lazy-require/src/index.ts",
+      "specifier": "node:module",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:module"
+    },
+    {
+      "importer": "packages/util/values/src/index.ts",
+      "specifier": "./partial-json.ts",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/partial-json.ts"
+    },
+    {
+      "importer": "packages/util/values/src/partial-json.ts",
+      "specifier": "./index.ts",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/context.ts",
+      "specifier": "./events.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/events.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/context.ts",
+      "specifier": "./fiber.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/fiber.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/context.ts",
+      "specifier": "./logger.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/logger.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/context.ts",
+      "specifier": "./reflect.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/reflect.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/context.ts",
+      "specifier": "./registry.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/registry.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/context.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/events.ts",
+      "specifier": "./context.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/context.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/events.ts",
+      "specifier": "./fiber.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/fiber.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/events.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/events.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/fiber.ts",
+      "specifier": "./context.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/context.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/fiber.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/fiber.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./context.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/context.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./events.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/events.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./fiber.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/fiber.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./logger.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/logger.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./registry.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/registry.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./service.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/service.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/index.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/logger.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/logger.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/reflect.ts",
+      "specifier": "./fiber.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/fiber.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/reflect.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/reflect.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/registry.ts",
+      "specifier": "./fiber.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/fiber.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/registry.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/registry.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/service.ts",
+      "specifier": "./context.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/context.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/service.ts",
+      "specifier": "./utils.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/utils.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/service.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/utils.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/array.ts",
+      "specifier": "./misc.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/misc.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/index.ts",
+      "specifier": "./array.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/array.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/index.ts",
+      "specifier": "./misc.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/misc.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/index.ts",
+      "specifier": "./string.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/string.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/index.ts",
+      "specifier": "./time.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/time.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/index.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/types.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/index.ts",
+      "specifier": "./volatile.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/volatile.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/types.ts",
+      "specifier": "./misc.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/misc.ts"
+    },
+    {
+      "importer": "vendor/cosmokit/src/types.ts",
+      "specifier": "./volatile.ts",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/volatile.ts"
+    },
+    {
+      "importer": "vendor/schemastery/src/index.ts",
+      "specifier": "@deepseek-ai/cosmokit",
+      "kind": "import-statement",
+      "target": "vendor/cosmokit/src/index.ts"
+    }
+  ],
+  "pi": {
+    "version": "1.5.2",
+    "file": "dist/core/messages.js",
+    "sha256": "5169b61fa3d18794fd4a0e26d109d6475745723e4286ea03720b8c9a2a224f9f"
+  },
+  "runtimeSha256": "74bf74961c71e0371ba27bac9dcc476dab2e097a8029e758458768b408e684e5"
+}

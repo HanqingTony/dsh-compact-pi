@@ -1,0 +1,5 @@
+# Generated upstream code contains intentional whitespace in runtime templates.
+dist/* -whitespace
+vendor/dsh-runtime.mjs -whitespace
+# Byte-for-byte upstream sources retain their original whitespace.
+vendor/dsh-source/** -whitespace

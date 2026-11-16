@@ -1,57 +1,31 @@
-# Native DSH session codec in pi (v0.1.0)
+# Migrating the v0.1 native session codec
 
-## Why a patch
+Version 0.2 is a normal pi extension. It keeps pi's session format and uses append-only custom transactions, context edits and native compaction entries. The extension never patches pi, owns pi's session file, or rewrites a session snapshot.
 
-pi's `SessionManager` owns the session file and opens it **before extensions
-load**. The extension API has no session-codec hook, so a plugin alone cannot
-make plain `pi` read/write DSH JSONL. v0.1.0 therefore ships a narrow,
-reversible patch to `dist/core/session-manager.js` and the bundled CLI chunk.
+The v0.1 patch replaced pi's session-manager read/write functions and dropped non-message entries and branch relationships. Its installer has been retired; `scripts/patch-pi.mjs` now only restores existing `.dsh-pi.bak` backups.
 
-## What the patch changes
+## Migration
 
-| pi function | Change |
-|---|---|
-| `loadEntriesFromFile` | if the first row is a DSH v4 header, convert the event log to a pi header + pi entries and return them |
-| `readSessionHeader` | recognize DSH headers for `--continue` / `--resume` discovery |
-| `_persist` (first write) | write one complete DSH file from the in-memory pi entries |
-| `_persist` (append) | map one pi entry to DSH event(s) and append |
-| `_rewriteFile` | rewrite the DSH file from all pi entries |
-| `forkFrom` | write the forked session as DSH |
-| `buildSessionInfo` | feed `--resume` metadata from the DSH surface |
+1. Keep the original DSH session files as backups.
+2. Convert each session you want to resume into a new pi file:
 
-The conversion is synchronous and lives in `src/codec.ts`, bundled to
-`dist/codec.mjs`. During installation it is copied to
-`<pi>/dist/dsh-pi-codec.mjs`, so the patched pi is self-contained.
+   ```bash
+   node dist/dcp-session.mjs dsh2pi old.dsh.jsonl imported.pi.jsonl
+   ```
 
-## Consistency model
+3. Restore the patched pi installation:
 
-- pi keeps its normal in-memory pi entries; only the file boundary changes.
-- File appends and plugin rewrites are reconciled by mtime/size: the codec
-  reloads the DSH file before appending after an external (plugin) rewrite.
-- The plugin detects the native DSH file lazily (pi creates the session file
-  on the first persisted message) and uses the native file as its canonical
-  log, instead of a `.dsh/` sidecar.
+   ```bash
+   node scripts/patch-pi.mjs --restore --pi-dir /path/to/patched/pi-package
+   ```
 
-## Install / restore
+4. Install dcp normally and open the imported session:
 
-```bash
-node scripts/patch-pi.mjs                 # auto-discovers pi
-node scripts/patch-pi.mjs --pi-dir <dir>  # explicit
-node scripts/patch-pi.mjs --restore
-```
+   ```bash
+   pi install /absolute/path/to/dsh-compact-pi
+   pi --session imported.pi.jsonl
+   ```
 
-Backups are `<file>.dsh-pi.bak`; restore copies them back and removes the
-installed codec. Re-apply after a pi upgrade.
+The current export codec can retain complete pi headers/entries in ignorable DSH archive records for lossless round trips. A foreign DSH log without those records imports its active message surface. Metadata already removed by the old v0.1 codec cannot be reconstructed.
 
-## Remaining gaps
-
-- `--continue` is exercised heavily; the `--resume` selector has the
-  `buildSessionInfo` adaptation but has not been exercised as much.
-- `model_change`, `thinking_level_change`, `session_info`, `label`, `usage`,
-  and native `compaction` entries are not represented in DSH; they are
-  dropped on the file boundary. The in-memory pi session still has them.
-- `context_edit`, branches, and tree navigation are not mapped. The plugin
-  uses the current branch only.
-- An open turn is left at process exit; DSH repair closes it on import.
-- The patch is tied to pi 1.5.0's function shapes. A newer pi may need the
-  patch refreshed; the script fails loudly if a patch point is missing.
+If pi has been upgraded since patching, restore the exact old installation only; do not copy an old backup over a newer pi version. Installing the current pi package afresh also removes a legacy patch from that installation.

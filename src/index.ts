@@ -1,103 +1,133 @@
-/**
- * pi extension: run DSH's compaction engine on pi's context.
- *
- * Native pi compaction is cancelled; the DSH Session log is the compaction
- * source of truth, and its surface is projected back into pi's request.
- */
-
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+/** Installable pi extension using DSH's compaction services and pi's log API. */
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from '@earendil-works/pi-coding-agent'
 import { DshBridge } from './bridge.ts'
+import { loadConfig } from './config.ts'
+import { describeSummary } from './compaction-info.ts'
 
-export default function dshCompaction(pi: ExtensionAPI): void {
+export default function dcp(pi: ExtensionAPI): void {
   let bridge: DshBridge | undefined
-
+  let displayContext: ExtensionContext | undefined
+  pi.registerMarkdownTransformer(
+    (markdown, context) => {
+      if (context.messageType !== 'summary') return markdown
+      return describeSummary(
+        markdown,
+        context.messageId,
+        displayContext?.sessionManager,
+      )
+    },
+    { messageTypes: ['summary'] },
+  )
   pi.on('session_start', async (_event, ctx) => {
-    const next = new DshBridge(pi, ctx)
+    bridge = undefined
+    displayContext = ctx
     try {
-      await next.init()
-      bridge = next
+      bridge = new DshBridge(pi, ctx, await loadConfig(ctx.cwd))
     } catch (error) {
-      bridge = undefined
-      const message = error instanceof Error ? error.message : String(error)
-      try {
-        ctx.ui?.notify?.(`[dsh-pi] init failed: ${message}`, 'error')
-      } catch {
-        // UI is optional in print/rpc modes.
-      }
+      ctx.ui.notify(`dcp: initialization failed: ${String(error)}`, 'error')
     }
   })
-
-  // Turn off pi's native compaction. If the bridge is not ready we leave the
-  // host behavior intact so a plugin failure does not strand the session.
-  pi.on('session_before_compact', () => {
-    return bridge?.ready ? { cancel: true } : undefined
+  pi.on('input', (_event, ctx) => {
+    if (!bridge?.isCompacting) return
+    ctx.ui.notify(
+      'dcp: compaction is in progress; input was not submitted. Please retry after it finishes.',
+      'warning',
+    )
+    return { action: 'handled' }
   })
-
-  pi.on('agent_end', (event) => {
-    bridge?.noteAgentEnd(event)
+  pi.on('context', async (event, ctx) => {
+    if (!bridge) return
+    displayContext = ctx
+    bridge.updateContext(ctx)
+    try {
+      return { messages: await bridge.context(event.messages, ctx.signal) }
+    } catch (error) {
+      if (ctx.signal?.aborted) throw error
+      ctx.ui.notify(
+        `dcp: context compaction failed: ${String(error)}`,
+        'warning',
+      )
+      // Already committed checkpoints still apply if a new attempt failed.
+      // The bridge's replay is exposed through a separate synchronous path.
+      return { messages: bridge.replay(event.messages) }
+    }
   })
-
-  // A failed provider request cannot be retried from the `context` hook. The
-  // boundary is the only point where pi lets an extension request one more
-  // provider pass, so compact there and ask for the continuation.
+  pi.on('session_before_compact', async (event, ctx) => {
+    if (!bridge) return
+    displayContext = ctx
+    bridge.updateContext(ctx)
+    // Threshold admission is handled by the DSH pressure policy in context.
+    if (event.reason !== 'manual') return { cancel: true }
+    try {
+      const compaction = await bridge.prepareNative(event)
+      return compaction ? { compaction } : { cancel: true }
+    } catch (error) {
+      ctx.ui.notify(
+        `dcp: manual compaction failed: ${String(error)}`,
+        'warning',
+      )
+      return { cancel: true }
+    }
+  })
+  pi.on('agent_end', (event) => bridge?.noteAgentEnd(event))
+  pi.on('session_compact', () => bridge?.recoveredByHost())
   pi.on('agent_before_settle', async (_event, ctx) => {
-    if (!bridge?.overflowPending) return
-    const recovered = await bridge.recoverOverflow()
-    if (recovered) return { continue: true }
+    if (!bridge) return
+    displayContext = ctx
+    bridge.updateContext(ctx)
+    let continued = false
+    try {
+      if (bridge.overflowPending)
+        continued = await bridge.recoverOverflow(ctx.signal)
+    } catch (error) {
+      ctx.ui.notify(
+        `dcp: overflow recovery unavailable: ${String(error)}`,
+        'warning',
+      )
+    }
+    const entries = bridge.boundaryEntries()
+    if (continued || entries.length) return { entries, continue: continued }
     return
   })
-
-  pi.on('context', async (event, ctx) => {
-    if (!bridge?.ready) return
-    try {
-      await bridge.sync()
-      await bridge.compact(event.signal)
-      const messages = bridge.messages()
-      if (messages.length === 0) return
-      return { messages }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      try {
-        ctx.ui?.notify?.(`[dsh-pi] context failed: ${message}`, 'warning')
-      } catch {
-        // UI is optional.
-      }
-      // Returning undefined keeps pi's own projection for this request.
-      return
-    }
-  })
-
   pi.on('session_shutdown', async () => {
-    try {
-      await bridge?.close()
-    } catch {
-      // Best effort; the next context/session will retry.
-    }
+    await bridge?.close()
+    bridge = undefined
+    displayContext = undefined
   })
-
-  pi.registerCommand('dsh-status', {
-    description: 'Show the DSH compaction session state',
+  pi.registerCommand('dcp-status', {
+    description: 'Show DSH compaction policy and current branch checkpoints',
     handler: async (_args, ctx) => {
-      ctx.ui?.notify?.(bridge?.status() ?? 'dsh-pi: not ready', 'info')
+      ctx.ui.notify(bridge?.status() ?? 'dcp: not initialized', 'info')
     },
   })
-
-  pi.registerCommand('dsh-compact', {
-    description: 'Force a DSH compaction now',
-    handler: async (_args, ctx) => {
-      if (!bridge?.ready) {
-        ctx.ui?.notify?.('dsh-pi: not ready', 'warning')
+  pi.registerCommand('dcp-compact', {
+    description: 'Compact with DeepSeek Harness (same as /compact)',
+    handler: async (args, ctx) => {
+      if (!bridge) {
+        ctx.ui.notify('dcp: not initialized', 'warning')
         return
       }
-      const outcome = await bridge.compact(undefined, true)
-      if (outcome?.error) {
-        ctx.ui?.notify?.(`dsh-pi: ${outcome.error}`, 'error')
+      if (!ctx.isIdle()) {
+        ctx.ui.notify(
+          'dcp: manual compaction requires an idle agent',
+          'warning',
+        )
         return
       }
-      ctx.ui?.notify?.(
-        outcome ? `dsh-pi: compacted ${outcome.before} -> ${outcome.after} tokens` : 'dsh-pi: nothing to compact',
-        'info',
-      )
+      if (args.trim()) {
+        ctx.ui.notify(
+          'dcp: /dcp-compact takes no arguments, matching DSH /compact',
+          'warning',
+        )
+        return
+      }
+      ctx.compact({
+        onComplete: () => ctx.ui.notify('dcp: DSH checkpoint saved', 'info'),
+        onError: (error) => ctx.ui.notify(`dcp: ${error.message}`, 'error'),
+      })
     },
   })
 }

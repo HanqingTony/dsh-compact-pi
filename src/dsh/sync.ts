@@ -1,9 +1,10 @@
 /** Append pi session entries to a DSH Session as native DSH events. */
 
-import type { Session } from '@deepseek-ai/dsh-session'
+import type { Session } from '../../vendor/dsh-runtime.mjs'
 import { piContentToDsh, type PiMessage } from './messages.ts'
 
 export interface SyncState {
+  imageToDsh?: (image: any) => any
   turn: number
   step: number
   turnStarted: boolean
@@ -27,8 +28,19 @@ export function createSyncState(): SyncState {
   }
 }
 
+/** Binary payloads live in pi's original log and the attachment store, not duplicated in audit metadata. */
+function piMetadata(message: PiMessage): PiMessage | Record<string, any> {
+  if (
+    !Array.isArray(message.content) ||
+    !message.content.some((block) => block.type === 'image')
+  )
+    return message
+  const { content: _content, ...metadata } = message
+  return metadata
+}
+
 function append(session: Session, type: string, data: any, options?: any): any {
-  return (session as any).append(type, data, options)
+  return session.append(type, JSON.parse(JSON.stringify(data)), options)
 }
 
 function ensureTurn(session: Session, state: SyncState): void {
@@ -37,18 +49,33 @@ function ensureTurn(session: Session, state: SyncState): void {
   state.turnStarted = true
 }
 
-function appendSystem(session: Session, state: SyncState, entry: any, message: PiMessage, systemPrompt?: string): void {
+function appendSystem(
+  session: Session,
+  state: SyncState,
+  entry: any,
+  message: PiMessage,
+  systemPrompt?: string,
+): void {
   if (state.systemSeq !== undefined) return
   ensureTurn(session, state)
   let content = piContentToDsh(
     systemPrompt && systemPrompt.trim().length > 0
       ? systemPrompt
-      : (typeof message.content === 'string' ? message.content : []),
+      : typeof message.content === 'string'
+        ? message.content
+        : [],
   )
-  if (!content.some((block) => block.type === 'text' && String(block.text ?? '').trim().length > 0)) {
+  if (
+    !content.some(
+      (block) =>
+        block.type === 'text' && String(block.text ?? '').trim().length > 0,
+    )
+  ) {
     const sections = (message as any).sections
     if (sections && typeof sections === 'object') {
-      const text = Object.values(sections).filter((value) => typeof value === 'string' && value.trim()).join('\n\n')
+      const text = Object.values(sections)
+        .filter((value) => typeof value === 'string' && value.trim())
+        .join('\n\n')
       if (text) content = [{ type: 'text', text }]
     }
   }
@@ -70,7 +97,12 @@ function appendSystem(session: Session, state: SyncState, entry: any, message: P
   state.systemSeq = event.seq
 }
 
-function appendUser(session: Session, state: SyncState, entry: any, message: PiMessage): void {
+function appendUser(
+  session: Session,
+  state: SyncState,
+  entry: any,
+  message: PiMessage,
+): void {
   ensureTurn(session, state)
   if (state.stepOpen) {
     append(session, 'step/end', { turn: state.turn, step: state.step })
@@ -82,14 +114,19 @@ function appendUser(session: Session, state: SyncState, entry: any, message: PiM
     {
       role: 'user',
       id: entry.id,
-      source: { kind: 'user' },
-      content: piContentToDsh(message.content as any),
+      source: { kind: 'user', pi: piMetadata(message) },
+      content: piContentToDsh(message.content as any, state.imageToDsh),
     },
     { surfaceOp: 'append' },
   )
 }
 
-function appendAssistant(session: Session, state: SyncState, entry: any, message: PiMessage): void {
+function appendAssistant(
+  session: Session,
+  state: SyncState,
+  entry: any,
+  message: PiMessage,
+): void {
   ensureTurn(session, state)
   if (state.stepOpen) {
     append(session, 'step/end', { turn: state.turn, step: state.step })
@@ -98,7 +135,15 @@ function appendAssistant(session: Session, state: SyncState, entry: any, message
   state.step += 1
   append(session, 'step/start', { turn: state.turn, step: state.step })
   state.stepOpen = true
-  const content = piContentToDsh(message.content as any)
+  if (['error', 'aborted'].includes(message.stopReason)) {
+    append(session, 'assistant/attempt', {
+      turn: state.turn,
+      step: state.step,
+      stream: [],
+    })
+    return
+  }
+  const content = piContentToDsh(message.content as any, state.imageToDsh)
   append(
     session,
     'assistant/message',
@@ -110,12 +155,29 @@ function appendAssistant(session: Session, state: SyncState, entry: any, message
         id: entry.id,
         source: {
           kind: 'model',
+          pi: piMetadata(message),
           provider: String((message as any).provider ?? 'pi'),
           model: String((message as any).model ?? 'pi'),
         },
         content,
       },
-      stream: [],
+      // Final-block replay preserves usage pricing; original delta timing is unavailable.
+      stream: content.map((block, index) => ({
+        type: 'chunk',
+        time: 0,
+        chunk: { type: 'block-end', index, block },
+      })),
+      ...((message as any).usage &&
+      !['error', 'aborted'].includes((message as any).stopReason)
+        ? {
+            usage: {
+              inputTokens: Number(message.usage.input ?? 0),
+              outputTokens: Number(message.usage.output ?? 0),
+              cacheReadTokens: Number(message.usage.cacheRead ?? 0),
+              cacheWriteTokens: Number(message.usage.cacheWrite ?? 0),
+            },
+          }
+        : {}),
     },
     { surfaceOp: 'append' },
   )
@@ -134,7 +196,12 @@ function appendAssistant(session: Session, state: SyncState, entry: any, message
   }
 }
 
-function appendToolResult(session: Session, state: SyncState, entry: any, message: PiMessage): void {
+function appendToolResult(
+  session: Session,
+  state: SyncState,
+  entry: any,
+  message: PiMessage,
+): void {
   ensureTurn(session, state)
   const toolCallId = String((message as any).toolCallId ?? '')
   let callSeq = state.toolCalls.get(toolCallId)
@@ -147,9 +214,12 @@ function appendToolResult(session: Session, state: SyncState, entry: any, messag
       arguments: '{}',
     })
     callSeq = call.seq
-    state.toolCalls.set(toolCallId, callSeq)
+    state.toolCalls.set(toolCallId, call.seq)
   }
-  const content = piContentToDsh((message as any).content ?? [])
+  const content = piContentToDsh(
+    (message as any).content ?? [],
+    state.imageToDsh,
+  )
   append(
     session,
     'tool/result',
@@ -159,7 +229,7 @@ function appendToolResult(session: Session, state: SyncState, entry: any, messag
       message: {
         role: 'tool',
         id: entry.id,
-        source: { kind: 'tool', callId: toolCallId },
+        source: { kind: 'tool', callId: toolCallId, pi: piMetadata(message) },
         toolCallId,
         content,
         isError: (message as any).isError === true,
@@ -179,8 +249,9 @@ export function syncPiEntries(
   session: Session,
   entries: readonly any[],
   state: SyncState,
-  options: { systemPrompt?: string } = {},
+  options: { systemPrompt?: string; imageToDsh?: (image: any) => any } = {},
 ): number {
+  if (options.imageToDsh) state.imageToDsh = options.imageToDsh
   let count = 0
   for (const entry of entries) {
     if (entry?.type !== 'message' || !entry.message) continue
@@ -210,7 +281,6 @@ export function syncPiEntries(
   return count
 }
 
-
 /** Close the current DSH turn so the log looks like a completed DSH session. */
 export function closeTurn(session: Session, state: SyncState): void {
   if (state.stepOpen) {
@@ -218,7 +288,10 @@ export function closeTurn(session: Session, state: SyncState): void {
     state.stepOpen = false
   }
   if (state.turnStarted) {
-    append(session, 'turn/end', { turn: state.turn, reason: { kind: 'completed' } })
+    append(session, 'turn/end', {
+      turn: state.turn,
+      reason: { kind: 'completed' },
+    })
     state.turnStarted = false
     state.turn += 1
   }
@@ -228,7 +301,8 @@ export function closeTurn(session: Session, state: SyncState): void {
 export function nextTurn(session: Session): number {
   let max = 0
   for (const event of session.snapshotEvents()) {
-    if (event.type === 'turn/start') max = Math.max(max, Number((event.data as any)?.turn ?? 0))
+    if (event.type === 'turn/start')
+      max = Math.max(max, Number((event.data as any)?.turn ?? 0))
   }
   return max + 1
 }

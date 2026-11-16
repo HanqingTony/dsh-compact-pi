@@ -1,11 +1,15 @@
 /** DSH LLM seam backed by pi's model registry. */
 
-import type { DshContentBlock, DshMessage } from './messages.ts'
+import { dshMessageToPi as mapMessage } from './messages.ts'
+import { LlmError } from '../../vendor/dsh-runtime.mjs'
+import type { ImageBridge } from './images.ts'
 
 export interface PiHost {
+  attachmentHome?(): string
   model(): any
   findModel(provider?: string, model?: string): any
   complete(model: any, context: any, options: any): Promise<any>
+  notify?(message: string, level: 'warning' | 'error'): void
   systemPrompt(): string
 }
 
@@ -16,56 +20,6 @@ function textOf(content: any): string {
     .filter((block: any) => block?.type === 'text')
     .map((block: any) => String(block.text ?? ''))
     .join('\n')
-}
-
-function dshToPiBlock(block: DshContentBlock): any {
-  switch (block.type) {
-    case 'text':
-      return { type: 'text', text: String(block.text ?? '') }
-    case 'reasoning':
-      return { type: 'thinking', thinking: String(block.text ?? '') }
-    case 'tool-call':
-      return {
-        type: 'toolCall',
-        id: String(block.id ?? ''),
-        name: String(block.name ?? ''),
-        arguments: safeJson(block.arguments),
-      }
-    case 'image':
-      return { type: 'image', data: block.data, mimeType: block.mimeType }
-    default:
-      return undefined
-  }
-}
-
-function safeJson(value: unknown): unknown {
-  if (typeof value !== 'string') return value ?? {}
-  try {
-    return JSON.parse(value)
-  } catch {
-    return {}
-  }
-}
-
-function dshMessageToPi(message: DshMessage): any {
-  switch (message.role) {
-    case 'user':
-      return { role: 'user', content: (message.content ?? []).map(dshToPiBlock).filter(Boolean) }
-    case 'assistant':
-      return { role: 'assistant', content: (message.content ?? []).map(dshToPiBlock).filter(Boolean) }
-    case 'tool': {
-      const text = textOf(message.content)
-      return {
-        role: 'toolResult',
-        toolCallId: String(message.toolCallId ?? message.source?.callId ?? ''),
-        toolName: '',
-        content: text ? [{ type: 'text', text }] : [],
-        isError: message.isError === true,
-      }
-    }
-    default:
-      return undefined
-  }
 }
 
 function usageToDsh(usage: any): any {
@@ -86,53 +40,82 @@ function usageToDsh(usage: any): any {
  * model registry and re-emit the answer as DSH stream chunks so the real
  * `summarizeWithLlm` code path (prompt, framing, text projection) is preserved.
  */
-export function createLlm(host: PiHost): any {
+export function createLlm(host: PiHost, images?: ImageBridge): any {
   return {
+    imageRequestPricing: () => undefined,
     async *stream(options: any): AsyncGenerator<any> {
-      const model = host.findModel(options.provider, options.model) ?? host.model()
-      if (!model) throw new Error('dsh-pi: no pi model available for summarization')
+      const model =
+        host.findModel(options.provider, options.model) ??
+        (host.model()?.provider === options.provider &&
+        host.model()?.id === options.model
+          ? host.model()
+          : undefined)
+      if (!model)
+        throw new Error('dcp: no pi model available for summarization')
 
+      options.signal?.throwIfAborted()
+      const imageToPi = images
+        ? await images.requestMapper(
+            options.messages ?? [],
+            model,
+            options.signal,
+          )
+        : undefined
       const messages: any[] = []
-      let systemPrompt = ''
+      const systemPrompts: string[] = []
       for (const message of options.messages ?? []) {
         if (message.role === 'system') {
-          systemPrompt += `${textOf(message.content)}\n`
+          systemPrompts.push(textOf(message.content))
           continue
         }
-        const mapped = dshMessageToPi(message)
+        const mapped = mapMessage(message, Date.now(), undefined, imageToPi)
         if (mapped) messages.push(mapped)
       }
       const tools = Array.isArray(options.tools)
-        ? options.tools.map((tool: any) => ({ name: tool.name, description: tool.description, parameters: tool.parameters }))
+        ? options.tools.map((tool: any) => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+          }))
         : undefined
 
-      let response: any
-      try {
-        response = await host.complete(
-          model,
-          {
-            systemPrompt: systemPrompt.trim() || host.systemPrompt(),
-            messages,
-            ...(tools && tools.length > 0 ? { tools } : {}),
-          },
-          {
-            maxTokens: options.maxTokens,
-            signal: options.signal,
-            sessionId: options.sessionId,
-            cacheRetention: 'short',
-          },
+      const response = await host.complete(
+        model,
+        {
+          systemPrompt: systemPrompts.join('\n\n') || host.systemPrompt(),
+          messages,
+          ...(tools && tools.length > 0 ? { tools } : {}),
+        },
+        {
+          maxTokens: options.maxTokens,
+          signal: options.signal,
+          sessionId: options.sessionId,
+          cacheRetention: 'short',
+        },
+      )
+      options.signal?.throwIfAborted()
+      if (
+        response?.stopReason === 'error' ||
+        response?.stopReason === 'aborted'
+      ) {
+        throw new Error(
+          response.errorMessage ??
+            `dcp: summarization stopped: ${response.stopReason}`,
         )
-      } catch (error) {
-        throw error
-      }
-      if (response?.stopReason === 'error' || response?.stopReason === 'aborted') {
-        throw new Error(response.errorMessage ?? `dsh-pi: summarization stopped: ${response.stopReason}`)
       }
 
+      if (response?.content?.some((block: any) => block.type === 'image'))
+        throw new LlmError(
+          'compaction summary cannot contain image output',
+          'UNSUPPORTED_CONTENT',
+        )
       const text = Array.isArray(response?.content)
-        ? response.content.filter((block: any) => block?.type === 'text').map((block: any) => String(block.text ?? '')).join('')
+        ? response.content
+            .filter((block: any) => block?.type === 'text')
+            .map((block: any) => String(block.text ?? ''))
+            .join('')
         : ''
-      if (!text.trim()) throw new Error('dsh-pi: summarization produced no text')
+      if (!text.trim()) throw new Error('dcp: summarization produced no text')
 
       yield { type: 'block-start', index: 0, blockType: 'text' }
       yield { type: 'text-delta', index: 0, text }
@@ -141,14 +124,19 @@ export function createLlm(host: PiHost): any {
       if (usage) yield { type: 'usage', usage }
       yield {
         type: 'finish',
-        reason: response?.stopReason === 'length' ? { kind: 'max-tokens' } : { kind: 'stop' },
+        reason:
+          response?.stopReason === 'length'
+            ? { kind: 'max-tokens' }
+            : { kind: 'stop' },
       }
     },
 
     async resolveModelInfo(provider: string, modelId: string): Promise<any> {
       const model = host.findModel(provider, modelId) ?? host.model()
       return {
-        context: model?.contextWindow ? { contextWindow: model.contextWindow } : undefined,
+        context: model?.contextWindow
+          ? { contextWindow: model.contextWindow }
+          : undefined,
         defaultMaxTokens: model?.maxTokens,
       }
     },

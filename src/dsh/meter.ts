@@ -1,24 +1,9 @@
-/** Token measurement compatible with the subset compaction-basic consumes. */
-
-import type { Session } from '@deepseek-ai/dsh-session'
-
-export function estimateMessage(message: any): number {
-  if (!message) return 0
-  const text = JSON.stringify(message)
-  return Math.max(1, Math.ceil(text.length / 4))
-}
-
-export function measure(session: Session): any {
-  const nodes = session.surface.nodes.map((seq) => {
-    const event = session.eventAt(seq)
-    const message = event ? session.deriveEventMessage(event) : undefined
-    const tokens = estimateMessage(message)
-    return { seq, tokens, heuristicTokens: tokens }
-  })
-  return {
-    nodes,
-    totalTokens: nodes.reduce((sum, node) => sum + node.tokens, 0),
-  }
-}
-
-export const meter = { measure, estimateMessage }
+/** The upstream replay-aware meter, including system and tool-schema pressure. */
+import { Context, TokenMeter } from '../../vendor/dsh-runtime.mjs'
+const context = new Context()
+export const meter = new TokenMeter(context)
+export const measure = (session: Parameters<TokenMeter['measure']>[0]) =>
+  meter.measure(session)
+export const estimateMessage = (
+  message: Parameters<TokenMeter['estimateMessage']>[0],
+) => meter.estimateMessage(message)
