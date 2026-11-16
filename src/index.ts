@@ -42,14 +42,19 @@ export default function dcp(pi: ExtensionAPI): void {
     if (!bridge) return
     displayContext = ctx
     bridge.updateContext(ctx)
+    const signal = ctx.signal
+    // Pi can transform context once more after a tool was cancelled. The host
+    // still owns the aborted signal; do not start maintenance or throw from this hook.
+    if (signal?.aborted)
+      return { messages: bridge.replay(event.messages) }
     try {
-      return { messages: await bridge.context(event.messages, ctx.signal) }
+      return { messages: await bridge.context(event.messages, signal) }
     } catch (error) {
-      if (ctx.signal?.aborted) throw error
-      ctx.ui.notify(
-        `dcp: context compaction failed: ${String(error)}`,
-        'warning',
-      )
+      if (!signal?.aborted)
+        ctx.ui.notify(
+          `dcp: context compaction failed: ${String(error)}`,
+          'warning',
+        )
       // Already committed checkpoints still apply if a new attempt failed.
       // The bridge's replay is exposed through a separate synchronous path.
       return { messages: bridge.replay(event.messages) }

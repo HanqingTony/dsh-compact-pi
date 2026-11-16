@@ -25124,8 +25124,8 @@ var SessionProjectionRegistry = class extends Service {
 // package.json
 var package_default = {
   name: "dsh-compact-pi",
-  version: "0.2.2-b1",
-  dcpVersion: "0.2.2b1",
+  version: "0.2.2-b2",
+  dcpVersion: "0.2.2b2",
   type: "module",
   description: "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
   repository: {
@@ -30212,14 +30212,17 @@ function dcp(pi) {
     if (!bridge) return;
     displayContext = ctx;
     bridge.updateContext(ctx);
+    const signal = ctx.signal;
+    if (signal?.aborted)
+      return { messages: bridge.replay(event.messages) };
     try {
-      return { messages: await bridge.context(event.messages, ctx.signal) };
+      return { messages: await bridge.context(event.messages, signal) };
     } catch (error51) {
-      if (ctx.signal?.aborted) throw error51;
-      ctx.ui.notify(
-        `dcp: context compaction failed: ${String(error51)}`,
-        "warning"
-      );
+      if (!signal?.aborted)
+        ctx.ui.notify(
+          `dcp: context compaction failed: ${String(error51)}`,
+          "warning"
+        );
       return { messages: bridge.replay(event.messages) };
     }
   });

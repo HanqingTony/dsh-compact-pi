@@ -1,7 +1,7 @@
 {
   "name": "dsh-compact-pi",
-  "version": "0.2.2-b1",
-  "dcpVersion": "0.2.2b1",
+  "version": "0.2.2-b2",
+  "dcpVersion": "0.2.2b2",
   "type": "module",
   "description": "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
   "repository": {
