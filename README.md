@@ -6,6 +6,14 @@ Tested with pi 1.5.2 and 1.6.0. Node.js must satisfy `^24.22.3 || >=26.13.1`. DC
 
 ## Install and use
 
+Install from the [Pi package catalog](https://pi.dev/packages/dsh-compact-pi) via npm:
+
+```bash
+pi install npm:dsh-compact-pi@latest
+```
+
+The explicit tag selects the currently published prerelease. To pin the GitHub release, use:
+
 ```bash
 pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b2
 ```

@@ -1,6 +1,12 @@
 # DCP usage and troubleshooting
 
-Install the [tagged release](https://github.com/HanqingTony/dsh-compact-pi/releases/tag/v0.2.3-b2) with:
+Install from the [Pi package catalog](https://pi.dev/packages/dsh-compact-pi) with:
+
+```bash
+pi install npm:dsh-compact-pi@latest
+```
+
+Use the explicit tag while the npm release has a prerelease version. The GitHub tag is also available:
 
 ```bash
 pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b2
