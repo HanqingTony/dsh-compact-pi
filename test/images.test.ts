@@ -155,12 +155,9 @@ test('automatic summary sees prefix images and preserves the latest image tail',
       output = await h.bridge.context(input)
     assert.equal(h.calls.length, 1, JSON.stringify(h.notices))
     assert.equal(images(h.calls[0].messages).length, 1)
-    assert.ok(
-      Buffer.from(images(h.calls[0].messages)[0].data, 'base64').length > 0,
-    )
-    const requestImage = await sharp(
-      Buffer.from(images(h.calls[0].messages)[0].data, 'base64'),
-    ).metadata()
+    const bytes = Buffer.from(images(h.calls[0].messages)[0].data, 'base64')
+    assert.ok(bytes.length > 0 && bytes.length <= 1024)
+    const requestImage = await sharp(bytes).metadata()
     assert.ok(requestImage.width! <= 12 && requestImage.height! <= 8)
     assert.equal(output.at(-1), input.at(-1))
     assert.equal(images(output).length, 1)

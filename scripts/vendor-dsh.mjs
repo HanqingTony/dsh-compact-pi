@@ -59,6 +59,14 @@ try {
     path.join(piRoot, 'dist/core/messages.js'),
     'utf8',
   ).replace('//# sourceMappingURL=messages.js.map', '')
+  const projectionFile = 'dist/core/session-manager.js'
+  const piManager = readFileSync(path.join(piRoot, projectionFile), 'utf8')
+  const start = piManager.indexOf('function buildEntryIndex(')
+  const end = piManager.indexOf('/** Build the finalized model context', start)
+  if (start < 0 || end < 0) throw new Error('Cannot locate pi session projection')
+  const piProjection =
+    "import { createCustomMessage, createBranchSummaryMessage, createCompactionSummaryMessage } from './pi-messages.mjs'\n" +
+    piManager.slice(start, end) + 'export { buildSessionPath }\n'
   const manifest = {
     upstream: 'https://github.com/deepseek-ai/deepseek-harness',
     commit: execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], {
@@ -77,6 +85,7 @@ try {
       version: piPackage.version,
       file: 'dist/core/messages.js',
       sha256: sha(piMessages),
+      projection: { file: projectionFile, sha256: sha(piProjection) },
     },
   }
   writeFileSync(
@@ -116,6 +125,7 @@ try {
     path.join(vendor, 'LICENSE-DeepSeek'),
   )
   writeFileSync(path.join(vendor, 'pi-messages.mjs'), piMessages)
+  writeFileSync(path.join(vendor, 'pi-session-projection.mjs'), piProjection)
   console.log(
     `Copied ${inputs.length} unmodified files; rebuilt from the local source snapshot (${manifest.commit}).`,
   )

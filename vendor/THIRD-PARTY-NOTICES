@@ -1,4 +1,4 @@
-@deepseek-ai/cosmokit@1.9.0
+@deepseek-ai/cosmokit@1.10.0-alpha.1
 MIT License
 
 Copyright (c) 2021-present Shigma
@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@deepseek-ai/cordis@4.1.0
+@deepseek-ai/cordis@4.2.0-alpha.1
 MIT License
 
 Copyright (c) 2021-present Shigma
@@ -46,7 +46,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@deepseek-ai/schemastery@3.19.0
+@deepseek-ai/schemastery@3.20.0-alpha.1
 MIT License
 
 Copyright (c) 2021-present Shigma

@@ -16,6 +16,7 @@ import type {
   SessionBeforeCompactEvent,
   CompactionResult,
   SessionBoundaryDraft,
+  SessionEntry,
 } from '@earendil-works/pi-coding-agent'
 import { createSyncState, syncPiEntries, closeTurn } from './dsh/sync.ts'
 import {
@@ -30,7 +31,7 @@ import {
 import { dshMessageToPi } from './dsh/messages.ts'
 import { assertCompatible } from './dsh/capabilities.ts'
 import type { PiHost } from './dsh/llm.ts'
-import type { DcpConfig } from './config.ts'
+import { summaryModelLabel, type DcpConfig } from './config.ts'
 import type { DshEvent } from '../vendor/dsh-runtime.mjs'
 
 import {
@@ -105,6 +106,38 @@ function replayWithTransactions(
   return { messages: current, applied, origins }
 }
 
+export function readTransactions(entries: readonly SessionEntry[]): Transaction[] {
+  // Branch membership is authoritative. A checkpoint from an abandoned branch
+  // must never affect requests on the branch currently selected in pi.
+  return entries.flatMap((entry) => {
+    if (
+      entry.type !== 'custom' ||
+      ![JOURNAL, 'zcp/transaction-v1'].includes(entry.customType)
+    )
+      return []
+    const record = entry.data as Transaction | undefined
+    if (record?.version !== 1) return []
+    if (
+      !Array.isArray(record.before) ||
+      !record.before.every((hash) => typeof hash === 'string') ||
+      !Array.isArray(record.after) ||
+      !record.after.every(
+        (slot) =>
+          slot &&
+          (('keep' in slot &&
+            Number.isInteger(slot.keep) &&
+            slot.keep >= 0 &&
+            slot.keep < record.before.length) ||
+            ('message' in slot &&
+              slot.message &&
+              typeof slot.message.role === 'string')),
+      )
+    )
+      throw new Error('dcp: malformed transaction in session log')
+    return [record]
+  })
+}
+
 export class DshBridge {
   private ctx: ExtensionContext
   private readonly pi: Pick<
@@ -136,35 +169,7 @@ export class DshBridge {
     this.ctx = ctx
   }
   private records(): Transaction[] {
-    // Branch membership is authoritative. A checkpoint from an abandoned branch
-    // must never affect requests on the branch currently selected in pi.
-    return this.ctx.sessionManager.getBranch().flatMap((entry) => {
-      if (
-        entry.type !== 'custom' ||
-        ![JOURNAL, 'zcp/transaction-v1'].includes(entry.customType)
-      )
-        return []
-      const record = entry.data as Transaction | undefined
-      if (record?.version !== 1) return []
-      if (
-        !Array.isArray(record.before) ||
-        !record.before.every((hash) => typeof hash === 'string') ||
-        !Array.isArray(record.after) ||
-        !record.after.every(
-          (slot) =>
-            slot &&
-            (('keep' in slot &&
-              Number.isInteger(slot.keep) &&
-              slot.keep >= 0 &&
-              slot.keep < record.before.length) ||
-              ('message' in slot &&
-                slot.message &&
-                typeof slot.message.role === 'string')),
-        )
-      )
-        throw new Error('dcp: malformed transaction in session log')
-      return [record]
-    })
+    return readTransactions(this.ctx.sessionManager.getBranch())
   }
   private host(): PiHost {
     return {
@@ -724,6 +729,15 @@ export class DshBridge {
       this.agent = undefined
     }
   }
+  summaryModelStatus(): string {
+    const { policy } = this.config
+    const overrides = policy.modelPolicies?.filter(
+      (entry) => entry.summarizationProvider !== undefined,
+    ).length ?? 0
+    const suffix = overrides ? ` (${overrides} per-model overrides)` : ''
+    return `Summary model default: ${summaryModelLabel(policy)}${suffix}`
+  }
+
   status(): string {
     let policy: string
     try {
@@ -734,6 +748,6 @@ export class DshBridge {
     } catch (error) {
       policy = `policy unavailable: ${String(error)}; configure .pi/dcp.json for this model`
     }
-    return `dcp v${packageInfo.dcpVersion} (dsh-compact-pi) | DSH ${dshInfo.version} (${dshInfo.commit.slice(0, 12)})\ncheckpoints=${this.records().length}; tokens~${this.lastTokens}\n${policy}\nCompatibility: fixed model; text/tools/images; no input during compaction\nHost: real Cordis plugins, unmodified source snapshot\nPersistence: pi append-only log (current branch)`
+    return `dcp v${packageInfo.dcpVersion} (dsh-compact-pi) | DSH ${dshInfo.version} (${dshInfo.commit.slice(0, 12)})\ncheckpoints=${this.records().length}; tokens~${this.lastTokens}\n${policy}\n${this.summaryModelStatus()}\nCompatibility: fixed model; text/tools/images; no input during compaction\nHost: real Cordis plugins, unmodified source snapshot\nPersistence: pi append-only log (current branch)`
   }
 }

@@ -1,7 +1,7 @@
 {
   "upstream": "https://github.com/deepseek-ai/deepseek-harness",
-  "commit": "9c2670d3bce5275e0d1610272958121af87787bb",
-  "version": "0.2.2-rc.5",
+  "commit": "4b399c39a6d1479cd84ca591b4d7c88e24d38a96",
+  "version": "0.2.3-alpha.2",
   "sourceDirectory": "dsh-source",
   "inputs": [
     {
@@ -487,7 +487,7 @@
     {
       "file": "packages/attachment/attachment-local/package.json",
       "upstreamFile": "packages/attachment/attachment-local/package.json",
-      "sha256": "abcefac5bd2ce9199d435c2e04e6e62f5e6ced2799e87a8a95d2e843305b8288"
+      "sha256": "dddf137229cf2b3ee4a99c9238f820be182b32613934148094df4744e4eea3a8"
     },
     {
       "file": "packages/attachment/attachment-local/src/compression-limiter.ts",
@@ -497,12 +497,12 @@
     {
       "file": "packages/attachment/attachment-local/src/encoding.ts",
       "upstreamFile": "packages/attachment/attachment-local/src/encoding.ts",
-      "sha256": "6404620aaa9ccf87fdfcdb6302c2be09b666b76dd755a8f0f761c5890a7c9921"
+      "sha256": "6e7bd19f87681b81cea1aa149275324f147d9eda7e84a9a4ef65c236fdd837cf"
     },
     {
       "file": "packages/attachment/attachment-local/src/file-store.ts",
       "upstreamFile": "packages/attachment/attachment-local/src/file-store.ts",
-      "sha256": "8826c8ea6124c489c51c10bdc195f4f454b89370929e5d83c50e6232b2eef958"
+      "sha256": "8348cba748a6f4a9cd05e5f682952efe21ce606ca3c1c6795895933402102497"
     },
     {
       "file": "packages/attachment/attachment-local/src/image.ts",
@@ -512,7 +512,7 @@
     {
       "file": "packages/attachment/attachment-local/src/index.ts",
       "upstreamFile": "packages/attachment/attachment-local/src/index.ts",
-      "sha256": "4e2a7e494100253fc4d1107e99dc7e7459fec9d42b77e8e377af28bf59d3a7ac"
+      "sha256": "9bc21a3d80f45cf888f2edcb2ba97de9cfa4fd5674fd105fd8c6b399f89942ac"
     },
     {
       "file": "packages/attachment/attachment-local/src/normalization.ts",
@@ -522,7 +522,7 @@
     {
       "file": "packages/attachment/attachment-local/src/request-image.ts",
       "upstreamFile": "packages/attachment/attachment-local/src/request-image.ts",
-      "sha256": "bbb89a0150520a8c73d96fa884066e4b2cc82085864c5899500e45bd6aac889e"
+      "sha256": "e593b894f9478797b4d08aca02e57b0748c44b0f3781bd26a2fb33f59f8288a0"
     },
     {
       "file": "packages/attachment/attachment-local/src/sharp.ts",
@@ -532,12 +532,12 @@
     {
       "file": "packages/attachment/attachment-local/src/store.ts",
       "upstreamFile": "packages/attachment/attachment-local/src/store.ts",
-      "sha256": "d685538bd4c16272141d3cb45d472341d45c3f0e2d51c2edf20075a3773b8177"
+      "sha256": "665395f3f5b89c97a22863334d990b392bd9cde567437dd9fd38020a1ad83cdf"
     },
     {
       "file": "packages/attachment/attachment/package.json",
       "upstreamFile": "packages/attachment/attachment/package.json",
-      "sha256": "9227f811465bf6c04e6ac81c907a960245c00be84298e0540702d7b20d3fb52b"
+      "sha256": "e6807502c11997cbd54b0eb9a358f64d21642aee65d61f12328d3311ce8ee660"
     },
     {
       "file": "packages/attachment/attachment/src/admission.ts",
@@ -552,22 +552,27 @@
     {
       "file": "packages/attachment/attachment/src/error.ts",
       "upstreamFile": "packages/attachment/attachment/src/error.ts",
-      "sha256": "81956a70080708d856ee1a8167dd45faafcf5712ffe61ac226d6ced82582c4a3"
+      "sha256": "6dc1f2a91151fc27b846c7649dbfab6d343c4bfe171eb994e1f27414ea85b7de"
     },
     {
       "file": "packages/attachment/attachment/src/index.ts",
       "upstreamFile": "packages/attachment/attachment/src/index.ts",
-      "sha256": "24a1d29fe275adbb7d4efb0417eb0f56bcf06576f0003259f1c492f840f1ca6f"
+      "sha256": "59cd1d0e18d4ef4f8458ae69df7b844c18eac2c2995617d745f8d4d24bf7ab8a"
     },
     {
       "file": "packages/attachment/attachment/src/request-projection.ts",
       "upstreamFile": "packages/attachment/attachment/src/request-projection.ts",
-      "sha256": "9601939cf6b7d887444d4ef2f2af64299880d2e7c2b699d0d04fdaa9ec555d72"
+      "sha256": "e7baa57c4481a66f6cc59c2085898903a6f5c745063265635a602532303ae56c"
     },
     {
       "file": "packages/compaction/compaction-basic/package.json",
       "upstreamFile": "packages/compaction/compaction-basic/package.json",
-      "sha256": "e2a07a7e8f53b543a36cf3847448119bffb246c16d3ed9fa317d9cc7fd729b1f"
+      "sha256": "a0a17bc12da5895e74913ca5de79bfb316daaeadf5447de588e92e3b18086e81"
+    },
+    {
+      "file": "packages/compaction/compaction-basic/src/answered-route.ts",
+      "upstreamFile": "packages/compaction/compaction-basic/src/answered-route.ts",
+      "sha256": "1174025180ac7407120d03f62df639a7d8bf9dae673b045c5ac979d5326edf87"
     },
     {
       "file": "packages/compaction/compaction-basic/src/config.ts",
@@ -577,22 +582,22 @@
     {
       "file": "packages/compaction/compaction-basic/src/index.ts",
       "upstreamFile": "packages/compaction/compaction-basic/src/index.ts",
-      "sha256": "1d2ecc563147967f86842b37289682a4dd7feabccc9d9d8d55cfb01810166f54"
+      "sha256": "d0e2bf52e3a0ae70da153ce329aedab354fd37e1ccfacb27fea7070b7063aa28"
     },
     {
       "file": "packages/compaction/compaction-basic/src/region.ts",
       "upstreamFile": "packages/compaction/compaction-basic/src/region.ts",
-      "sha256": "295b53cc9e924f7cb2e843e0d0d296e89ead73da2aab9790282db30736e2e063"
+      "sha256": "bd81d81b57f6d5512e0c6cd03e8cffc16a994af76c23e52ce92f94e1e4f5db72"
     },
     {
       "file": "packages/compaction/compaction-basic/src/summarizer.ts",
       "upstreamFile": "packages/compaction/compaction-basic/src/summarizer.ts",
-      "sha256": "4f16b70148ffc9042e51bba2b0a8f3b35da55fcaba28d0c8cbf36102c9eecc99"
+      "sha256": "19f29d77bd9c79be57d899b4e0399601abee0926e720c162a26c0b7edc0a39ef"
     },
     {
       "file": "packages/compaction/compaction-image-offload/package.json",
       "upstreamFile": "packages/compaction/compaction-image-offload/package.json",
-      "sha256": "71df8224b14b7eec6ed16e1da0f11534f395522f8ca7bb7fd9d551396a39d798"
+      "sha256": "0855321d02da8f03a2667600ede9ca6e072a3d1ad0325415907b98f295638602"
     },
     {
       "file": "packages/compaction/compaction-image-offload/src/image-offload.ts",
@@ -617,7 +622,7 @@
     {
       "file": "packages/compaction/compaction-tool-result-pruner/package.json",
       "upstreamFile": "packages/compaction/compaction-tool-result-pruner/package.json",
-      "sha256": "0fe9e947cbaedd2c0ca2143aad55547411c95068d2805f5b9becf63ab78bfc1e"
+      "sha256": "001de5222924065ed237baba1ef0ae20c2630df580123cce65107529b113b564"
     },
     {
       "file": "packages/compaction/compaction-tool-result-pruner/src/config.ts",
@@ -632,7 +637,7 @@
     {
       "file": "packages/compaction/compaction/package.json",
       "upstreamFile": "packages/compaction/compaction/package.json",
-      "sha256": "e33f5620a4ce6d93731c33021070d20e26cdcfa51a55e728f73bf50c9b2837d2"
+      "sha256": "92ed1e3a721f134c9ca3675cbcb6762a87bb9553defd0e1170e27412f3d11579"
     },
     {
       "file": "packages/compaction/compaction/src/brand.ts",
@@ -642,12 +647,12 @@
     {
       "file": "packages/compaction/compaction/src/checkpoint.ts",
       "upstreamFile": "packages/compaction/compaction/src/checkpoint.ts",
-      "sha256": "194c6f7bf0b0a403837cff2815c37f657b35a7713b5a354cb40f64dfb42a44e3"
+      "sha256": "4d815a0df52b1d6f4b24d3cb53d98b9ca6a13fe42140b5ad225f024b9d249534"
     },
     {
       "file": "packages/compaction/compaction/src/index.ts",
       "upstreamFile": "packages/compaction/compaction/src/index.ts",
-      "sha256": "1d50528c7daf5950e79d7edb2fabca48da6682fc536e911c9f64e4d0bdea4ba1"
+      "sha256": "eef07d0e6cb57c42258e362400e3191e816a5e8d6f01456014cf421645993b0c"
     },
     {
       "file": "packages/compaction/compaction/src/tool-pairing.ts",
@@ -657,7 +662,7 @@
     {
       "file": "packages/core/scope/package.json",
       "upstreamFile": "packages/core/scope/package.json",
-      "sha256": "efce5224ab20e019ed20e8a783ec981c4dfbaf46490095dc136278bbbc7581a0"
+      "sha256": "e94deaa9d49af24f6ac62cc4d3ea6962da9c870644d89fd9201180dfe45ea54f"
     },
     {
       "file": "packages/core/scope/src/index.ts",
@@ -672,7 +677,12 @@
     {
       "file": "packages/core/session/package.json",
       "upstreamFile": "packages/core/session/package.json",
-      "sha256": "c699a4d5984c7acef670bfc100f3d5b3bcd89ccf96d5cc3bd06c6d58578c4317"
+      "sha256": "5224e4fdbe33dbc19d139173f4950d8dcb1ec25a5ee98573db67f646d8de4fd2"
+    },
+    {
+      "file": "packages/core/session/src/fork-error.ts",
+      "upstreamFile": "packages/core/session/src/fork-error.ts",
+      "sha256": "e44e0f95575c0d4396aadab52b4d1d31f7afeacaf9beb2e9b01f485799ddf7d9"
     },
     {
       "file": "packages/core/session/src/fork.ts",
@@ -682,12 +692,12 @@
     {
       "file": "packages/core/session/src/index.ts",
       "upstreamFile": "packages/core/session/src/index.ts",
-      "sha256": "8941b4c7a45debf2443b0f937830f806130167e3ef53426833f7225dd5a8bb8f"
+      "sha256": "a05b09d3aa9ee9104118931621526677cfdea76648208eadb75d4f98641fbaae"
     },
     {
       "file": "packages/core/session/src/known-event-types.ts",
       "upstreamFile": "packages/core/session/src/known-event-types.ts",
-      "sha256": "6583955525dd8b6869be2c476821f66c837519b7001ba134ab2fb2ecb57ecba9"
+      "sha256": "77e0ee7d68976a68ab1d8cd6466e2121a6211fa04cf905635b6fce94415a845a"
     },
     {
       "file": "packages/core/session/src/preparation.ts",
@@ -712,7 +722,7 @@
     {
       "file": "packages/core/session/src/surface.ts",
       "upstreamFile": "packages/core/session/src/surface.ts",
-      "sha256": "b549e49ed9c0df3607b7e61391cc2d8eaba59ba2410930c83527b9091a8495e5"
+      "sha256": "5215ff815fae1af3618c2262ff226a7a2b90177aeaa2bef2ef0c9b37cf1f28fb"
     },
     {
       "file": "packages/core/session/src/tool-history.ts",
@@ -722,32 +732,32 @@
     {
       "file": "packages/core/session/src/types.ts",
       "upstreamFile": "packages/core/session/src/types.ts",
-      "sha256": "1274e57822035991afd549ed9659a5dd4d66645d77171921d9b2601371911d2c"
+      "sha256": "938958dc5c593aaac5939a9a5f63b9d694e8eea9118ec3c830982a61425042f7"
+    },
+    {
+      "file": "packages/core/session/src/validation.ts",
+      "upstreamFile": "packages/core/session/src/validation.ts",
+      "sha256": "1adbe60e8b071d2c60a9239e86c7ee6c4ea3e235d50a58b7e32d1795f899a32a"
     },
     {
       "file": "packages/llm/llm/package.json",
       "upstreamFile": "packages/llm/llm/package.json",
-      "sha256": "4c8ea37019367c35d803eba159896ecc83dbc423ffe5ea60afab9ef391ece6e2"
+      "sha256": "5e9aa7d5509db9d0b0f0eaa6150894291efc56672f736efdc490de387fec8ddf"
     },
     {
       "file": "packages/llm/llm/src/adapter-failure.ts",
       "upstreamFile": "packages/llm/llm/src/adapter-failure.ts",
-      "sha256": "0ffaab6257c3fad0a45c5de8ffbbc390a64321b8102579620cf262c234c9635a"
-    },
-    {
-      "file": "packages/llm/llm/src/api-key.ts",
-      "upstreamFile": "packages/llm/llm/src/api-key.ts",
-      "sha256": "16bf926a82b0c0c1d4adbee78e2a1eebe260f100285795edb8330f3fe46141a4"
+      "sha256": "94de380c3db5f83a3d47f2692533d2a18a61b4e4be9ec91c047d9e9e89eaccf8"
     },
     {
       "file": "packages/llm/llm/src/assembler.ts",
       "upstreamFile": "packages/llm/llm/src/assembler.ts",
-      "sha256": "a2d065645058a70195a504b101e9eed23df3eaced3def868d602f3a863b03887"
+      "sha256": "669ccb9e8aec1e704dcdea62d0940e4086f1fbb5b51b4a27eeddc86236ae7dff"
     },
     {
       "file": "packages/llm/llm/src/assistant-stream.ts",
       "upstreamFile": "packages/llm/llm/src/assistant-stream.ts",
-      "sha256": "9ff074108132ef0ffeefffd8e7967d05db4c6bef1689242807ef7a1d2105dfeb"
+      "sha256": "1aab3423320f205d7f4f3c26888a50e1f04102962513d51ee4c74874eb02cc18"
     },
     {
       "file": "packages/llm/llm/src/attribution.ts",
@@ -757,17 +767,17 @@
     {
       "file": "packages/llm/llm/src/brand.ts",
       "upstreamFile": "packages/llm/llm/src/brand.ts",
-      "sha256": "a3a3f22174353af8aea34a9a439986530bffcc6df6339e55612fd5a1fa4fb14c"
+      "sha256": "efcd5273d7407430f4eee25181f59ff5daa1694e391e9f05b1236a6b22577742"
     },
     {
       "file": "packages/llm/llm/src/call-config.ts",
       "upstreamFile": "packages/llm/llm/src/call-config.ts",
-      "sha256": "1b70454e4c6d579ebe2a24f76c25f22f90d4e9c7fb0c90f73afd731371962bd0"
+      "sha256": "e66bfa0b2f5c2b9ff4e4f0716472387a42a220abcd5f16c0aba3d7ce72f06e80"
     },
     {
       "file": "packages/llm/llm/src/content.ts",
       "upstreamFile": "packages/llm/llm/src/content.ts",
-      "sha256": "60fff14a31f8230b4a1c26772f7a1986617b1f037b19c2c0ee1986163bc81701"
+      "sha256": "1cb360b455149591299c8e41c2894a1525f5e54b8294b162c174f5231a5deeab"
     },
     {
       "file": "packages/llm/llm/src/error.ts",
@@ -777,12 +787,17 @@
     {
       "file": "packages/llm/llm/src/index.ts",
       "upstreamFile": "packages/llm/llm/src/index.ts",
-      "sha256": "45f7d934bedb3d72474a384ba75dca7ea2ae4c4439c164b91c87da313ec8970f"
+      "sha256": "f79d4dcce980ebefc02f9ca841b0732e4d145a8247caf7f83646bf745b2b8b70"
     },
     {
       "file": "packages/llm/llm/src/message.ts",
       "upstreamFile": "packages/llm/llm/src/message.ts",
-      "sha256": "5826fb32bc3d6e2221a7a39cc8b4fecc57282540a332417bb9f2ac3522b5c7da"
+      "sha256": "0181f055c506dd76a86469a8a6c8f606ed13618f79138368e57bd7bce01d7859"
+    },
+    {
+      "file": "packages/llm/llm/src/request-images.ts",
+      "upstreamFile": "packages/llm/llm/src/request-images.ts",
+      "sha256": "7c03a2c42b20ff05939a1a6f9034d9b79d590e2eba72bd61581cd4df9824442b"
     },
     {
       "file": "packages/llm/llm/src/retry-policy.ts",
@@ -790,24 +805,19 @@
       "sha256": "f9f62de349aaddd8ad9167bc0b7e447c6a319e352bd99f1cd6199cc2d468541d"
     },
     {
-      "file": "packages/llm/llm/src/types.ts",
-      "upstreamFile": "packages/llm/llm/src/types.ts",
-      "sha256": "cfe8237e84d7d8f3f5192773ad70927e1ff930a9ac536ca79a40207da791429a"
-    },
-    {
       "file": "packages/llm/token-meter/package.json",
       "upstreamFile": "packages/llm/token-meter/package.json",
-      "sha256": "8c04e4c0d1431c0ca8298aad4bbbdea90fa049867f47e25f1d9e740e489996c9"
+      "sha256": "95bedc54b75b223e1c9954d67e7404b3e7b15e09d6dc953dfbb2248569780ba0"
     },
     {
       "file": "packages/llm/token-meter/src/breakdown-projection.ts",
       "upstreamFile": "packages/llm/token-meter/src/breakdown-projection.ts",
-      "sha256": "b743855c3ec03d94e7aa784b4f2ae328dfc9903d2b9adb133fb610857edec561"
+      "sha256": "ef14523dfd5d8fc92738c5ddd3519a9c5a2c280dd64b0d788db51d1fc4c0daff"
     },
     {
       "file": "packages/llm/token-meter/src/estimate.ts",
       "upstreamFile": "packages/llm/token-meter/src/estimate.ts",
-      "sha256": "30ecc576a77aa3a65fb8173c551e13d7651ddba2d7bbd907845a003f17ee189d"
+      "sha256": "5bba60d08cd8b3ef9945f18d7ef6c62b1e96d768d1f33184fc7da9bd88134d3e"
     },
     {
       "file": "packages/llm/token-meter/src/index.ts",
@@ -837,12 +847,12 @@
     {
       "file": "packages/llm/token-meter/src/usage-projection.ts",
       "upstreamFile": "packages/llm/token-meter/src/usage-projection.ts",
-      "sha256": "37eef359b829e533e08dae37e21ca4cd6a0eee995e9d630509bc98e2f60e9888"
+      "sha256": "9cddaced1ce9efab8ace727e7d6b7de74b59c2efb4daaec14db0e79ad738437e"
     },
     {
       "file": "packages/session/session-projection/package.json",
       "upstreamFile": "packages/session/session-projection/package.json",
-      "sha256": "111fc661c368c5cb49e75a27f11b2c928efbab8b61a7345d352a775b754b7ca8"
+      "sha256": "886687c778cc917712c503e2a07e2d424a17a04de94725470bc6fd114b517a6a"
     },
     {
       "file": "packages/session/session-projection/src/index.ts",
@@ -852,12 +862,12 @@
     {
       "file": "packages/typert/protocol/package.json",
       "upstreamFile": "packages/typert/protocol/package.json",
-      "sha256": "54f48c21a316e0fdac5671a6d05f63bfd06f691f4245c12e4043582d39b98912"
+      "sha256": "8ea8ba82df43cd35030f4bc86c4c0b01a179fa94fb05402c8a4c22c27b647745"
     },
     {
       "file": "packages/typert/protocol/src/index.ts",
       "upstreamFile": "packages/typert/protocol/src/index.ts",
-      "sha256": "ad89508f0790243d6519693e2a80b40e3712745c11b0e64d8767b8670f516925"
+      "sha256": "bfedc58927579edea8811313ae6c0174370ad354d8aef8c8591008cc292b3ffa"
     },
     {
       "file": "packages/typert/protocol/src/json-value.ts",
@@ -877,7 +887,7 @@
     {
       "file": "packages/typert/protocol/src/remote-error.ts",
       "upstreamFile": "packages/typert/protocol/src/remote-error.ts",
-      "sha256": "bb902ec537e1dfbc74885e77a01192e6532b50a959a5bc4cc55c1fbf52e0a368"
+      "sha256": "268522872d3687137a024061faa396669e0a379e8412446b0ed1fe7d7b3cc88b"
     },
     {
       "file": "packages/typert/protocol/src/remote-info.ts",
@@ -887,7 +897,7 @@
     {
       "file": "packages/util/brand/package.json",
       "upstreamFile": "packages/util/brand/package.json",
-      "sha256": "6cba76280d13e09e51ea98bbdce68997a37e290f253cadf61986a60f205a25ce"
+      "sha256": "d168b5204806f1b465d39daa3a33b0e011757a78230aa1ec7f20021395fe270a"
     },
     {
       "file": "packages/util/brand/src/index.ts",
@@ -897,7 +907,7 @@
     {
       "file": "packages/util/crypto/package.json",
       "upstreamFile": "packages/util/crypto/package.json",
-      "sha256": "b94c2b8645e8f4ade99a6470d2fb718314b847fbfa8d5a19d931e98d87640d82"
+      "sha256": "a5d02da3027b85bade336bc78a7e008442470eab3f0997b476ab11090134aace"
     },
     {
       "file": "packages/util/crypto/src/index.ts",
@@ -907,7 +917,7 @@
     {
       "file": "packages/util/error/package.json",
       "upstreamFile": "packages/util/error/package.json",
-      "sha256": "e1b4404068df95fdaad80dccdcb3e7bd122bed7d081b3560966a9ff806cf8739"
+      "sha256": "6831e644a6fce749bc87c3ddc88f1483d1faa6ff6064e4555fc178fb32710edf"
     },
     {
       "file": "packages/util/error/src/index.ts",
@@ -917,17 +927,17 @@
     {
       "file": "packages/util/home-paths/package.json",
       "upstreamFile": "packages/util/home-paths/package.json",
-      "sha256": "fed1486f51b5b1f696921cec970c7a78b72910db6750aeae46687ea4996d9a03"
+      "sha256": "fc6226b76fc67b0295325ea82d58e6a4db41f722e85e3ab80416500dccab5c08"
     },
     {
       "file": "packages/util/home-paths/src/index.ts",
       "upstreamFile": "packages/util/home-paths/src/index.ts",
-      "sha256": "143a1583d9f5203f000da672de1dd27fe9994db9332d8c25f101c149c91cb643"
+      "sha256": "e33b9ea3db5a04bd6e2f440ff85506389a01ac583c1d48c3e066022f37bcf70a"
     },
     {
       "file": "packages/util/lazy-require/package.json",
       "upstreamFile": "packages/util/lazy-require/package.json",
-      "sha256": "08f35c253911be1cede55f16f2a6cd627ea6d004e3d67b4cc49fe835fdee2f25"
+      "sha256": "50dcd73f9f453eb4e4ea276650771994babc5527f1e4d5cbacc3e7391784aaa7"
     },
     {
       "file": "packages/util/lazy-require/src/index.ts",
@@ -937,7 +947,7 @@
     {
       "file": "packages/util/timeout/package.json",
       "upstreamFile": "packages/util/timeout/package.json",
-      "sha256": "2211633ffe3444caf26c9dcb22a54d7f9e5f7297ec3739a55801f120e4d9e50f"
+      "sha256": "b4d64fc41c67e854677f1d9ff22b9615edefb9273d78409f2e8a16d85f3854f0"
     },
     {
       "file": "packages/util/timeout/src/index.ts",
@@ -947,7 +957,7 @@
     {
       "file": "packages/util/values/package.json",
       "upstreamFile": "packages/util/values/package.json",
-      "sha256": "8500fb7430b02b6ad6723b46a8021029f771df4782ba1b5c0d3622d2d5e5d950"
+      "sha256": "61372aa775e826f49459134e4eb1cacba8cd22a94fb08eeeba8d42fdd82a42d5"
     },
     {
       "file": "packages/util/values/src/index.ts",
@@ -962,22 +972,22 @@
     {
       "file": "vendor/cordis/package.json",
       "upstreamFile": "vendor/cordis/package.json",
-      "sha256": "f2f434042ae760e4a19a792873a174c9c69b5a984d0a3a196a0b5cfc42e1f2f1"
+      "sha256": "d4858e7b4c2bbb8950ca62ca5f2dea93cdb71ba6279b4be279fb9ec94013df6c"
     },
     {
       "file": "vendor/cordis/src/context.ts",
       "upstreamFile": "vendor/cordis/src/context.ts",
-      "sha256": "fd5a4f1d2bc6b8b34729c87fda7639a07759ce07fb070ab05374acbcb9ccdc0e"
+      "sha256": "bafba86b1ee343789a430f675b7834741fefa4cc6ba2c7067e2bda5fe45049fe"
     },
     {
       "file": "vendor/cordis/src/events.ts",
       "upstreamFile": "vendor/cordis/src/events.ts",
-      "sha256": "a464c843822da4eb31a8d998c5e2216a817b8a7dfeacb6e1aab7f830e7320d6b"
+      "sha256": "5be223a4f8a1c7edddfc9b1509d2b52a2d98e5ec645d72d26c0d00820ea380f8"
     },
     {
       "file": "vendor/cordis/src/fiber.ts",
       "upstreamFile": "vendor/cordis/src/fiber.ts",
-      "sha256": "b64c3a97f15f0381479dcf3d25965e56dc4cecfa4a0881fc055a49f65b9945df"
+      "sha256": "927bb4933683120ba99c62e8801d2f9da6acf812fbbeac7608d777a664824540"
     },
     {
       "file": "vendor/cordis/src/index.ts",
@@ -987,32 +997,32 @@
     {
       "file": "vendor/cordis/src/logger.ts",
       "upstreamFile": "vendor/cordis/src/logger.ts",
-      "sha256": "a6836ace311d0bd1abc9c1211cffcba73eff61c89ca47641efd82d91747401cb"
+      "sha256": "c380b67eadaf97506c92ca37b92706897da280c912ce14d01a68d53b9d7e3141"
     },
     {
       "file": "vendor/cordis/src/reflect.ts",
       "upstreamFile": "vendor/cordis/src/reflect.ts",
-      "sha256": "047f01fcdef2aa34b4afc39deaf18c16733fabd2a5ef0d55e5c2595b22caadfd"
+      "sha256": "b1d01770568cb7d5074ce2b7ac4f39cdd77cbf9178b9d8cd9cbf48b4e292f305"
     },
     {
       "file": "vendor/cordis/src/registry.ts",
       "upstreamFile": "vendor/cordis/src/registry.ts",
-      "sha256": "34bbd60ae502b4f85201c204afb52a9acabde6878d9278493478c1b2183debd3"
+      "sha256": "ae425a8ebe6768d5334958628591d8956d3c92d36eb6ca59b4aafde020a44163"
     },
     {
       "file": "vendor/cordis/src/service.ts",
       "upstreamFile": "vendor/cordis/src/service.ts",
-      "sha256": "614205c6ce7cf1a057b8b352e96aa4fcd734c967a3d2283a126c9c61f268e3be"
+      "sha256": "219ffc1d78d00006552e245c46c0fdb5bba9b9c560c6c222b9c6dced131519bf"
     },
     {
       "file": "vendor/cordis/src/utils.ts",
       "upstreamFile": "vendor/cordis/src/utils.ts",
-      "sha256": "c68bab85514ebd8cb08227367ea306b0109a214cd10965c497474eeadaaca756"
+      "sha256": "65d3b72f52344a6e5df182c59558ff60a5dc27fc0c58f05b1056d764a763e096"
     },
     {
       "file": "vendor/cosmokit/package.json",
       "upstreamFile": "vendor/cosmokit/package.json",
-      "sha256": "7a1ed1aa96cb336f397efbc62bcc24d85828ad9e1892323fa15d94721d1e9711"
+      "sha256": "b7142a9b72669dc812308b5ab7013c0499c57cb3595684f68f9ec1dd52700e47"
     },
     {
       "file": "vendor/cosmokit/src/array.ts",
@@ -1052,7 +1062,7 @@
     {
       "file": "vendor/schemastery/package.json",
       "upstreamFile": "vendor/schemastery/package.json",
-      "sha256": "0229c7870c40fe6c33b8b3224ea835c5c5cb2194503d596d0b56121ec71c5ae0"
+      "sha256": "70b187c332b1a3529fb7d8b7a0759749b55615cdf2bac9399d05ac58109fa165"
     },
     {
       "file": "vendor/schemastery/src/index.ts",
@@ -2509,6 +2519,12 @@
     },
     {
       "importer": "packages/attachment/attachment-local/src/file-store.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/file-store.ts",
       "specifier": "node:crypto",
       "kind": "import-statement",
       "external": true,
@@ -2645,6 +2661,12 @@
     },
     {
       "importer": "packages/attachment/attachment-local/src/request-image.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/request-image.ts",
       "specifier": "node:crypto",
       "kind": "import-statement",
       "external": true,
@@ -2687,6 +2709,12 @@
       "specifier": "@deepseek-ai/dsh-attachment",
       "kind": "import-statement",
       "target": "packages/attachment/attachment/src/index.ts"
+    },
+    {
+      "importer": "packages/attachment/attachment-local/src/store.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
     },
     {
       "importer": "packages/attachment/attachment-local/src/store.ts",
@@ -2773,10 +2801,22 @@
       "target": "node:buffer"
     },
     {
+      "importer": "packages/compaction/compaction-basic/src/answered-route.ts",
+      "specifier": "zod",
+      "kind": "import-statement",
+      "target": "dependencies/zod@4.6.6/index.js"
+    },
+    {
       "importer": "packages/compaction/compaction-basic/src/config.ts",
       "specifier": "@deepseek-ai/dsh-util-values",
       "kind": "import-statement",
       "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "./answered-route.ts",
+      "kind": "import-statement",
+      "target": "packages/compaction/compaction-basic/src/answered-route.ts"
     },
     {
       "importer": "packages/compaction/compaction-basic/src/index.ts",
@@ -2795,6 +2835,12 @@
       "specifier": "./summarizer.ts",
       "kind": "import-statement",
       "target": "packages/compaction/compaction-basic/src/summarizer.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/index.ts",
+      "specifier": "@deepseek-ai/cordis",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/index.ts"
     },
     {
       "importer": "packages/compaction/compaction-basic/src/index.ts",
@@ -2825,6 +2871,12 @@
       "specifier": "./summarizer.ts",
       "kind": "import-statement",
       "target": "packages/compaction/compaction-basic/src/summarizer.ts"
+    },
+    {
+      "importer": "packages/compaction/compaction-basic/src/region.ts",
+      "specifier": "@deepseek-ai/dsh-brand",
+      "kind": "import-statement",
+      "target": "packages/util/brand/src/index.ts"
     },
     {
       "importer": "packages/compaction/compaction-basic/src/region.ts",
@@ -2986,6 +3038,12 @@
     },
     {
       "importer": "packages/core/session/src/index.ts",
+      "specifier": "./fork-error.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/fork-error.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
       "specifier": "./fork.ts",
       "kind": "import-statement",
       "target": "packages/core/session/src/fork.ts"
@@ -3040,6 +3098,12 @@
     },
     {
       "importer": "packages/core/session/src/index.ts",
+      "specifier": "./validation.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/validation.ts"
+    },
+    {
+      "importer": "packages/core/session/src/index.ts",
       "specifier": "@deepseek-ai/cordis",
       "kind": "import-statement",
       "target": "vendor/cordis/src/index.ts"
@@ -3061,13 +3125,6 @@
       "specifier": "@deepseek-ai/dsh-util-values",
       "kind": "import-statement",
       "target": "packages/util/values/src/index.ts"
-    },
-    {
-      "importer": "packages/core/session/src/index.ts",
-      "specifier": "node:path",
-      "kind": "import-statement",
-      "external": true,
-      "target": "node:path"
     },
     {
       "importer": "packages/core/session/src/repair.ts",
@@ -3124,6 +3181,31 @@
       "target": "packages/util/brand/src/index.ts"
     },
     {
+      "importer": "packages/core/session/src/validation.ts",
+      "specifier": "./surface.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/surface.ts"
+    },
+    {
+      "importer": "packages/core/session/src/validation.ts",
+      "specifier": "./types.ts",
+      "kind": "import-statement",
+      "target": "packages/core/session/src/types.ts"
+    },
+    {
+      "importer": "packages/core/session/src/validation.ts",
+      "specifier": "@deepseek-ai/dsh-util-values",
+      "kind": "import-statement",
+      "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/core/session/src/validation.ts",
+      "specifier": "node:path",
+      "kind": "import-statement",
+      "external": true,
+      "target": "node:path"
+    },
+    {
       "importer": "packages/llm/llm/src/adapter-failure.ts",
       "specifier": "./error.ts",
       "kind": "import-statement",
@@ -3174,6 +3256,12 @@
     },
     {
       "importer": "packages/llm/llm/src/content.ts",
+      "specifier": "./request-images.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/request-images.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/content.ts",
       "specifier": "@deepseek-ai/dsh-util-values",
       "kind": "import-statement",
       "target": "packages/util/values/src/index.ts"
@@ -3189,12 +3277,6 @@
       "specifier": "./adapter-failure.ts",
       "kind": "import-statement",
       "target": "packages/llm/llm/src/adapter-failure.ts"
-    },
-    {
-      "importer": "packages/llm/llm/src/index.ts",
-      "specifier": "./api-key.ts",
-      "kind": "import-statement",
-      "target": "packages/llm/llm/src/api-key.ts"
     },
     {
       "importer": "packages/llm/llm/src/index.ts",
@@ -3252,12 +3334,6 @@
     },
     {
       "importer": "packages/llm/llm/src/index.ts",
-      "specifier": "./types.ts",
-      "kind": "import-statement",
-      "target": "packages/llm/llm/src/types.ts"
-    },
-    {
-      "importer": "packages/llm/llm/src/index.ts",
       "specifier": "@deepseek-ai/dsh-typert-protocol",
       "kind": "import-statement",
       "target": "packages/typert/protocol/src/index.ts"
@@ -3267,6 +3343,12 @@
       "specifier": "@deepseek-ai/dsh-util-values",
       "kind": "import-statement",
       "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/message.ts",
+      "specifier": "./request-images.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/request-images.ts"
     },
     {
       "importer": "packages/llm/llm/src/message.ts",
@@ -3285,6 +3367,12 @@
       "specifier": "@deepseek-ai/dsh-util-values",
       "kind": "import-statement",
       "target": "packages/util/values/src/index.ts"
+    },
+    {
+      "importer": "packages/llm/llm/src/request-images.ts",
+      "specifier": "./error.ts",
+      "kind": "import-statement",
+      "target": "packages/llm/llm/src/error.ts"
     },
     {
       "importer": "packages/llm/llm/src/retry-policy.ts",
@@ -3509,6 +3597,12 @@
       "target": "vendor/cordis/src/index.ts"
     },
     {
+      "importer": "packages/typert/protocol/src/remote-error.ts",
+      "specifier": "@deepseek-ai/dsh-error",
+      "kind": "import-statement",
+      "target": "packages/util/error/src/index.ts"
+    },
+    {
       "importer": "packages/util/home-paths/src/index.ts",
       "specifier": "node:fs/promises",
       "kind": "import-statement",
@@ -3610,12 +3704,6 @@
     },
     {
       "importer": "vendor/cordis/src/fiber.ts",
-      "specifier": "./context.ts",
-      "kind": "import-statement",
-      "target": "vendor/cordis/src/context.ts"
-    },
-    {
-      "importer": "vendor/cordis/src/fiber.ts",
       "specifier": "./utils.ts",
       "kind": "import-statement",
       "target": "vendor/cordis/src/utils.ts"
@@ -3670,6 +3758,12 @@
     },
     {
       "importer": "vendor/cordis/src/logger.ts",
+      "specifier": "./service.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/service.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/logger.ts",
       "specifier": "./utils.ts",
       "kind": "import-statement",
       "target": "vendor/cordis/src/utils.ts"
@@ -3721,6 +3815,12 @@
       "specifier": "./context.ts",
       "kind": "import-statement",
       "target": "vendor/cordis/src/context.ts"
+    },
+    {
+      "importer": "vendor/cordis/src/service.ts",
+      "specifier": "./reflect.ts",
+      "kind": "import-statement",
+      "target": "vendor/cordis/src/reflect.ts"
     },
     {
       "importer": "vendor/cordis/src/service.ts",
@@ -3804,7 +3904,11 @@
   "pi": {
     "version": "1.5.2",
     "file": "dist/core/messages.js",
-    "sha256": "5169b61fa3d18794fd4a0e26d109d6475745723e4286ea03720b8c9a2a224f9f"
+    "sha256": "5169b61fa3d18794fd4a0e26d109d6475745723e4286ea03720b8c9a2a224f9f",
+    "projection": {
+      "file": "dist/core/session-manager.js",
+      "sha256": "0b794a544b63721fb89a821d026b56d80ac24019729acaf8c4cf20af22105d0e"
+    }
   },
-  "runtimeSha256": "43e2eab22edd4932a2385d56e18a681ee3dbcad08d07b859060f7cadf3bdebb7"
+  "runtimeSha256": "8453478a3843b6700f3f6ee2e3f6f187b45fa575817c3b6270234c73a9543e36"
 }

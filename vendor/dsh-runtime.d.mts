@@ -148,7 +148,16 @@ export class LocalAttachmentStore extends Service {
   constructor(ctx: Context, config: any)
   saveImage(input: any): Promise<any>
   readImage(ref: any, signal?: AbortSignal): Promise<any>
-  readImageRequest(ref: any, target: any, signal?: AbortSignal): Promise<any>
+  readImageRequest(
+    ref: any,
+    target: {
+      width: number
+      height: number
+      maxImageBytes: number
+      imageTargetBytes: number
+    },
+    signal?: AbortSignal,
+  ): Promise<any>
   imageHostPath(ref: any): string | undefined
 }
 export const ImageOffloadPlugin: any
@@ -173,6 +182,8 @@ export function requestImageDimensions(
   width: number,
   height: number,
   maxPixels: number,
+  maxWidth?: number,
+  maxHeight?: number,
 ): { width: number; height: number }
 
 export const imageOffloadProjection: any

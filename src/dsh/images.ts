@@ -176,18 +176,16 @@ export class ImageBridge {
           ref.width,
           ref.height,
           2048 * 2048,
+          resize?.maxWidth,
+          resize?.maxHeight,
         )
-        const scale = Math.min(
-          1,
-          (resize?.maxWidth ?? dimensions.width) / dimensions.width,
-          (resize?.maxHeight ?? dimensions.height) / dimensions.height,
-        )
+        const maxImageBytes = resize?.maxBytes ?? 1024 * 1024
         const version = await this.store.readImageRequest(
           ref,
           {
-            width: Math.max(1, Math.floor(dimensions.width * scale)),
-            height: Math.max(1, Math.floor(dimensions.height * scale)),
-            maxBytes: resize?.maxBytes ?? 1024 * 1024,
+            ...dimensions,
+            maxImageBytes,
+            imageTargetBytes: maxImageBytes,
           },
           signal,
         )

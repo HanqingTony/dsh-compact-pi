@@ -92,6 +92,37 @@ function setup(window = 6000) {
   }
 }
 
+test('summary uses the last model that answered, not the current request route', async () => {
+  const h = setup()
+  const bridge = h.bridge()
+  try {
+    const previous = { ...h.ctx.model, provider: 'previous', id: 'answered' }
+    h.ctx.modelRegistry.find = (provider: string, id: string) =>
+      [previous, h.ctx.model].find((m) => m.provider === provider && m.id === id)
+    const notices: string[] = []
+    h.ctx.ui.notify = (message: string) => notices.push(message)
+    const complete = h.ctx.modelRegistry.complete
+    const routes: string[] = []
+    h.ctx.modelRegistry.complete = (model: typeof previous, context: any, options: any) => {
+      routes.push(`${model.provider}/${model.id}`)
+      return complete(model, context, options)
+    }
+    h.manager.appendMessage(user('old history '.repeat(3000)))
+    h.manager.appendMessage({
+      ...assistant('previous answer'),
+      provider: previous.provider,
+      model: previous.id,
+    })
+    h.manager.appendMessage(user('next request '.repeat(200)))
+    const output = await bridge.context(h.manager.buildSessionProjection().messages)
+    assert.deepEqual(routes, ['previous/answered'], notices.join('\n'))
+    assert.match(JSON.stringify(output), /COMPACTED SUMMARY/)
+  } finally {
+    await bridge.close()
+    h.cleanup()
+  }
+})
+
 test('prune-only progress is durable across restart and preserves metadata', async () => {
   const h = setup()
   try {

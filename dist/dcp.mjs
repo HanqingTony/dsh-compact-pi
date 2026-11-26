@@ -406,10 +406,11 @@ var symbols = {
   caller: /* @__PURE__ */ Symbol.for("cordis.caller"),
   receiver: /* @__PURE__ */ Symbol.for("cordis.receiver"),
   original: /* @__PURE__ */ Symbol.for("cordis.original"),
-  metadata: /* @__PURE__ */ Symbol.for("cordis.metadata"),
+  decorator: /* @__PURE__ */ Symbol.for("cordis.decorator"),
   initHooks: /* @__PURE__ */ Symbol.for("cordis.initHooks"),
   checkProto: /* @__PURE__ */ Symbol.for("cordis.checkProto"),
   // context symbols
+  root: /* @__PURE__ */ Symbol.for("cordis.root"),
   effect: /* @__PURE__ */ Symbol.for("cordis.effect"),
   filter: /* @__PURE__ */ Symbol.for("cordis.filter"),
   isolate: /* @__PURE__ */ Symbol.for("cordis.isolate"),
@@ -417,11 +418,12 @@ var symbols = {
   // service symbols
   init: /* @__PURE__ */ Symbol.for("cordis.init"),
   check: /* @__PURE__ */ Symbol.for("cordis.check"),
-  config: /* @__PURE__ */ Symbol.for("cordis.config"),
   invoke: /* @__PURE__ */ Symbol.for("cordis.invoke"),
+  metadata: /* @__PURE__ */ Symbol.for("cordis.metadata"),
   extend: /* @__PURE__ */ Symbol.for("cordis.extend"),
   tracker: /* @__PURE__ */ Symbol.for("cordis.tracker"),
-  resolveConfig: /* @__PURE__ */ Symbol.for("cordis.resolveConfig")
+  mergeIntercept: /* @__PURE__ */ Symbol.for("cordis.mergeIntercept"),
+  resolveIntercept: /* @__PURE__ */ Symbol.for("cordis.resolveIntercept")
 };
 var GeneratorFunction = function* () {
 }.constructor;
@@ -598,8 +600,7 @@ function buildOuterStack(offset = 0) {
   return () => outerError.stack.split("\n").slice(3 + offset);
 }
 var kValidationError = /* @__PURE__ */ Symbol.for("ValidationError");
-var ValidationError = class extends TypeError {
-  name = "ValidationError";
+var ValidationError = class _ValidationError extends TypeError {
   /**
    * Build the aggregated message from schema issues.
    *
@@ -608,12 +609,42 @@ var ValidationError = class extends TypeError {
   constructor(issues) {
     super(`invalid config:
 ` + issues.map((issue2) => {
-      if (issue2.path) {
-        return `  - ${issue2.message} (at ${issue2.path.join(".")})`;
+      if (issue2.path?.length) {
+        return `  - ${issue2.message} (at ${_ValidationError.formatPath(issue2.path)})`;
       } else {
         return `  - ${issue2.message}`;
       }
     }).join("\n"));
+    this.issues = issues;
+  }
+  issues;
+  name = "ValidationError";
+  /**
+   * Test whether a value is a config `ValidationError`, including one from another copy of Cordis.
+   *
+   * @param error — the value to test.
+   * @returns `true` if `error` carries the global validation-error brand.
+   */
+  static is(error62) {
+    return !!error62?.[kValidationError];
+  }
+  /**
+   * Convert an issue path to plain property keys.
+   *
+   * @param path — the standard-schema issue path; segments may be `{ key }` objects.
+   * @returns the property keys, or an empty array when the issue has no path.
+   */
+  static normalizePath(path3 = []) {
+    return path3.map((segment) => typeof segment === "object" ? segment.key : segment);
+  }
+  /**
+   * Format an issue path as a dotted string.
+   *
+   * @param path — the standard-schema issue path.
+   * @returns the keys joined with `.`.
+   */
+  static formatPath(path3) {
+    return _ValidationError.normalizePath(path3).map(String).join(".");
   }
 };
 Object.defineProperty(ValidationError.prototype, kValidationError, {
@@ -693,14 +724,6 @@ var Fiber = class {
     if (runtime) {
       this.uid = parent.registry.counter;
       this.ctx = this.context = parent.extend({ fiber: this });
-      const injectEntries = Object.entries(this.inject);
-      if (injectEntries.length) {
-        this.ctx[Context.intercept] = Object.create(parent[Context.intercept]);
-        for (const [name2, config3] of injectEntries) {
-          if (isNullable(config3)) continue;
-          this.ctx[Context.intercept][name2] = config3;
-        }
-      }
       this._runner = {
         epoch: INACTIVE,
         getOuterStack,
@@ -740,6 +763,8 @@ var Fiber = class {
           while (this.inertia) {
             await this.inertia;
           }
+          this._updateState(() => {
+          });
         };
       }, "ctx.plugin()");
       try {
@@ -907,8 +932,8 @@ var Fiber = class {
     let inFlight;
     let removeWrapper = () => false;
     const waitForSetup = () => {
-      setupBarrier ??= new Promise((resolve4, reject) => {
-        resolveSetup = resolve4;
+      setupBarrier ??= new Promise((resolve42, reject) => {
+        resolveSetup = resolve42;
         rejectSetup = reject;
       });
       return setupBarrier;
@@ -1111,7 +1136,7 @@ var Fiber = class {
   }
   async _unload() {
     while ([...this.provisions].some((impl) => impl.dependents.size)) {
-      await new Promise((resolve4) => this._release = resolve4);
+      await new Promise((resolve42) => this._release = resolve42);
     }
     this._release = void 0;
     await Promise.all(this._disposables.clear().map(async (dispose) => {
@@ -1244,7 +1269,8 @@ var EventsService = class {
       this.emit("internal/dispatch", type, name2, args2, thisArg);
     }
     const filter = thisArg?.[Context.filter];
-    return [thisArg, (this._hooks[name2] || []).filter((hook) => hook.global || !filter || filter.call(thisArg, hook.ctx)).map((hook) => hook.callback)];
+    const callbacks = (this._hooks[name2] || []).filter((hook) => hook.global || !filter || filter.call(thisArg, hook.ctx)).map((hook) => hook.callback);
+    return [thisArg, callbacks, name2];
   }
   /**
    * Resolve bound callbacks using the event's context filter.
@@ -1264,10 +1290,12 @@ var EventsService = class {
    * @returns a promise resolving once every listener has settled.
    */
   async parallel(...args2) {
-    const [thisArg, callbacks] = this._resolve("parallel", args2);
+    const [thisArg, callbacks, name2] = this._resolve("parallel", args2);
     const results = await Promise.allSettled(callbacks.map(async (callback) => Reflect.apply(callback, thisArg, args2)));
     const errors = results.filter((result) => result.status === "rejected");
-    if (errors.length) throw new AggregateError(errors.map((error62) => error62.reason));
+    if (!errors.length) return;
+    const label = typeof name2 === "symbol" ? String(name2) : `"${name2}"`;
+    throw new AggregateError(errors.map((error62) => error62.reason), `one or more listeners of event ${label} failed`);
   }
   /**
    * Run listeners synchronously without waiting for returned promises.
@@ -1386,6 +1414,399 @@ var EventsService = class {
     return dispose;
   }
 };
+function enhanceError(error62) {
+  const lines = error62.stack.split("\n");
+  lines.splice(0, 2, `Error: ${error62.message}`);
+  error62.stack = lines.join("\n");
+  return error62;
+}
+var RESERVED_WORDS = ["prototype", "then"];
+function isSpecialProperty(prop) {
+  return typeof prop === "symbol" || RESERVED_WORDS.includes(prop) || parseInt(prop).toString() === prop || prop.startsWith("_");
+}
+function locate(ctx, name2) {
+  const key = ctx[symbols.isolate][name2];
+  let table = ctx[symbols.isolate];
+  let fiber = ctx.fiber;
+  while (true) {
+    let impl;
+    for (const provision of fiber.provisions) {
+      if (provision.name === name2 && provision.ctx[symbols.isolate][name2] === key) impl = provision;
+    }
+    if (impl) return { impl };
+    while (table !== fiber.ctx[symbols.isolate]) {
+      if (!table || Object.hasOwn(table, name2)) return;
+      table = Object.getPrototypeOf(table);
+    }
+    impl = fiber.committed?.[name2];
+    if (impl || name2 in fiber.inject) return { fiber, impl };
+    if (!fiber.runtime) return;
+    fiber = fiber.parent.fiber;
+  }
+}
+var ReflectService = class {
+  constructor(ctx) {
+    this.ctx = ctx;
+    defineProperty(this, symbols.tracker, {
+      property: "ctx",
+      noShadow: true
+    });
+    this.mixin("reflect", ["get", "set", "provide", "accessor", "mixin"]);
+    this.mixin("fiber", ["runtime", "effect"]);
+    this.mixin("registry", ["inject", "plugin"]);
+    this.mixin("events", ["on", "once", "parallel", "emit", "serial", "bail", "waterfall"]);
+  }
+  ctx;
+  /** Proxy traps implementing service resolution for every context object. */
+  static handler = {
+    get: (target, prop, ctx) => {
+      if (isSpecialProperty(prop)) {
+        return Reflect.get(target, prop, ctx);
+      }
+      if (Reflect.has(target, prop)) {
+        return getTraceable(ctx, Reflect.get(target, prop, ctx));
+      }
+      const error62 = new Error(`cannot get property "${prop}" without inject`);
+      try {
+        const def = target.reflect.props[prop];
+        if (def?.type === "accessor") {
+          return def.get.call(ctx, ctx[symbols.receiver], error62);
+        }
+        const defSite = ctx[symbols.shadow] ?? ctx;
+        if (!defSite.fiber.runtime) return ctx.reflect.get(prop, false);
+        return ctx.events.waterfall("internal/get", ctx, prop, error62, () => {
+          const result = locate(defSite, prop);
+          if (!result) throw error62;
+          if (result.impl) return getTraceable(ctx, result.impl.value);
+          error62.message = `cannot get required service "${prop}" in inactive context`;
+          throw error62;
+        });
+      } catch (e) {
+        throw e === error62 ? enhanceError(e) : e;
+      }
+    },
+    set: (target, prop, value, ctx) => {
+      if (isSpecialProperty(prop)) {
+        return Reflect.set(target, prop, value, ctx);
+      }
+      const error62 = new Error(`cannot set property "${prop}" without provide`);
+      const def = target.reflect.props[prop];
+      if (!def) {
+        if (!ctx.fiber.runtime) return Reflect.set(target, prop, value, ctx);
+        throw enhanceError(error62);
+      }
+      try {
+        if (def.type === "accessor") {
+          if (!def.set) return false;
+          return def.set.call(ctx, value, ctx[symbols.receiver], error62);
+        }
+        return ctx.events.waterfall("internal/set", ctx, prop, value, error62, () => {
+          return ctx.reflect.set(prop, value, error62);
+        });
+      } catch (e) {
+        throw e === error62 ? enhanceError(e) : e;
+      }
+    },
+    has: (target, prop) => {
+      if (isSpecialProperty(prop)) {
+        return Reflect.has(target, prop);
+      }
+      if (Reflect.has(target, prop)) return true;
+      return !!target.reflect.props[prop];
+    }
+  };
+  /** Service implementations, keyed by isolation label. */
+  store = /* @__PURE__ */ Object.create(null);
+  /** Declared context properties (services and accessors), by name. */
+  props = /* @__PURE__ */ Object.create(null);
+  _implCounter = 0;
+  /**
+   * Read a service from the store without the inject requirement.
+   *
+   * @param name — the service name.
+   * @param strict — when `true`, only return implementations whose providing
+   * fiber is currently active.
+   * @returns the service value, or `undefined` when not (yet) provided.
+   */
+  get(name2, strict = true) {
+    return getTraceable(this.ctx, this._getImpl(name2, strict)?.value);
+  }
+  _getImpl(name2, strict = true) {
+    const key = this.ctx[symbols.isolate][name2];
+    const impl = key && this.store[key];
+    if (!impl) return;
+    if (strict && impl.ctx.fiber.state !== 2) return;
+    return impl;
+  }
+  /**
+   * Overwrite a provided service's value.
+   *
+   * @param name — the service name.
+   * @param value — the new service value.
+   * @param error — carrier for the caller stack in diagnostics.
+   * @returns `true` on success.
+   * @throws when `name` was never provided, or was provided by another fiber.
+   */
+  set(name2, value, error62) {
+    const key = this.ctx[symbols.isolate][name2];
+    const impl = this.store[key];
+    if (!impl) {
+      throw new Error(`cannot set property "${name2}" without provide`);
+    }
+    if (impl.ctx.fiber !== this.ctx.fiber) {
+      throw new Error(`cannot set property "${name2}" in multiple fibers`);
+    }
+    impl.value = value;
+    return true;
+  }
+  /**
+   * Register a service implementation owned by the current fiber.
+   *
+   * See the `ctx.provide()` overload above for the full contract.
+   *
+   * @param name — the service name.
+   * @param value — the service value.
+   * @param check — optional availability predicate for dependents.
+   * @returns a disposer that unregisters the service.
+   */
+  provide(name2, value, check2) {
+    return this.ctx.fiber.effect(() => {
+      if (!this.props[name2]) {
+        this.props[name2] ??= { type: "service" };
+      } else if (this.props[name2].type !== "service") {
+        throw new Error(`property "${name2}" is already declared as ${this.props[name2].type}`);
+      }
+      this.props[name2] = { type: "service" };
+      this.ctx[symbols.root][symbols.isolate][name2] ??= Symbol(name2);
+      const key = this.ctx[symbols.isolate][name2];
+      const impl = { uid: ++this._implCounter, name: name2, value, ctx: this.ctx, check: check2, isolate: key, dependents: /* @__PURE__ */ new Set() };
+      if (this.store[key]) {
+        throw new Error(`service "${name2}" has been registered at <${this.store[key].ctx.fiber.name}>`);
+      }
+      this.store[key] = impl;
+      this.ctx.fiber.provisions.add(impl);
+      if (this.ctx.fiber.state === 2) {
+        this.notify([name2]);
+      }
+      return async () => {
+        if (this.store[impl.isolate] === impl) delete this.store[impl.isolate];
+        this.ctx.isolate(name2, impl.isolate).reflect.notify([name2]);
+        await new Promise((resolve42) => {
+          impl.release = resolve42;
+          if (!impl.dependents.size) resolve42();
+        });
+        impl.release = void 0;
+        this.ctx.fiber.provisions.delete(impl);
+      };
+    }, `ctx.provide(${JSON.stringify(name2)})`);
+  }
+  /**
+   * Re-evaluate every fiber that requires one of the given services.
+   *
+   * @param names — the service names that changed.
+   * @param filter — restricts notification to matching isolation scopes.
+   */
+  notify(names, filter = (ctx, name2) => ctx[symbols.isolate][name2] === this.ctx[symbols.isolate][name2]) {
+    for (const runtime of this.ctx.registry.values()) {
+      for (const fiber of runtime.fibers) {
+        let hasUpdate = false;
+        for (const name2 of names) {
+          if (!(name2 in fiber.inject)) continue;
+          if (!filter(fiber.ctx, name2)) continue;
+          hasUpdate = true;
+          fiber._checkImpl(name2);
+        }
+        if (!hasUpdate) continue;
+        fiber._refresh();
+      }
+    }
+    for (const name2 of names) {
+      const self = Object.create(this.ctx);
+      self[symbols.filter] = (target) => filter(target, name2);
+      this.ctx.events.emit(self, "internal/service", name2, this._getImpl(name2, false)?.value);
+    }
+  }
+  /**
+   * Define a computed context property backed by get/set hooks.
+   *
+   * @param name — the context property name.
+   * @param options — the `get` hook and optional `set` hook.
+   * @returns a disposer that removes the accessor.
+   */
+  accessor(name2, options) {
+    return this.ctx.fiber.effect(() => {
+      if (name2 in this.props) {
+        throw new Error(`property "${name2}" is already declared as ${this.props[name2].type}`);
+      }
+      this.props[name2] = { type: "accessor", ...options };
+      return () => delete this.props[name2];
+    }, `ctx.accessor(${JSON.stringify(name2)})`);
+  }
+  /**
+   * Expose selected members of a service directly on `ctx`.
+   *
+   * See the `ctx.mixin()` overload above for the full contract.
+   *
+   * @param source — a context property name or a source object.
+   * @param mixins — keys to forward, or a source-key → ctx-key map.
+   * @returns a disposer that removes all created accessors.
+   */
+  mixin(source, mixins) {
+    const self = this;
+    return this.ctx.fiber.effect(function* () {
+      const entries = Array.isArray(mixins) ? mixins.map((key) => [key, key]) : Object.entries(mixins);
+      const getTarget = (ctx, error62) => {
+        return ctx[source];
+      };
+      for (const [key, value] of entries) {
+        yield self.accessor(value, {
+          get(receiver, error62) {
+            const service = getTarget(this, error62);
+            if (isNullable(service)) return service;
+            const mixin = receiver ? withProps(receiver, service) : service;
+            const value2 = Reflect.get(service, key, mixin);
+            if (typeof value2 !== "function") return value2;
+            return value2.bind(mixin ?? service);
+          },
+          set(value2, receiver, error62) {
+            const service = getTarget(this, error62);
+            const mixin = receiver ? withProps(receiver, service) : service;
+            return Reflect.set(service, key, value2, mixin);
+          }
+        });
+      }
+    }, `ctx.mixin(${JSON.stringify(source)})`);
+  }
+  /**
+   * Attach this context's tracing wrapper to a value.
+   *
+   * @param value — the value to wrap.
+   * @returns the traceable wrapper (or the value itself when not applicable).
+   */
+  trace(value) {
+    return getTraceable(this.ctx, value);
+  }
+  /**
+   * Wrap a callback so calls trace `this` and arguments to this context.
+   *
+   * @param callback — the function to wrap.
+   * @returns a proxy delegating to `callback` with traced values.
+   */
+  bind(callback) {
+    return new Proxy(callback, {
+      apply: (target, thisArg, args2) => {
+        return Reflect.apply(target, this.trace(thisArg), args2.map((arg) => this.trace(arg)));
+      },
+      construct: (target, args2, newTarget) => {
+        return Reflect.construct(target, args2.map((arg) => this.trace(arg)), newTarget);
+      }
+    });
+  }
+};
+var Service = class _Service {
+  /**
+   * Register this instance as `name` in the current context.
+   *
+   * Calls `ctx.reflect.provide(name, this, this[Service.check])`, so the
+   * service is unregistered automatically when the owning fiber unloads.
+   * Services with a `[Service.invoke]` body return a callable instance.
+   *
+   * @param ctx — the context to register in (stored as `this.ctx`).
+   * @param name — the service name; defaults to the static `provide` field.
+   */
+  constructor(ctx, name2) {
+    this.ctx = ctx;
+    name2 ??= this.constructor["provide"];
+    let self = this;
+    const tracker = {
+      associate: name2,
+      property: "ctx"
+    };
+    if (self[symbols.invoke]) {
+      self = createCallable(name2, joinPrototype(Object.getPrototypeOf(this), Function.prototype), tracker);
+    }
+    self.ctx = ctx;
+    self.name = name2;
+    defineProperty(self, symbols.tracker, tracker);
+    self.ctx.reflect.provide(name2, self, this[symbols.check]);
+    return self;
+  }
+  ctx;
+  /** Symbol key of an instance method run after construction (class plugins). */
+  static init = symbols.init;
+  /** Symbol key of the availability predicate passed to `ctx.provide()`. */
+  static check = symbols.check;
+  /** Symbol key of the call body making a service callable (e.g. `ctx.logger()`). */
+  static invoke = symbols.invoke;
+  /** Symbol key of the phantom intercept-metadata type parameter. */
+  static metadata = symbols.metadata;
+  /** Symbol key of the helper deriving an extended service instance. */
+  static extend = symbols.extend;
+  /** Symbol key of the tracker metadata used for context tracing. */
+  static tracker = symbols.tracker;
+  /** Symbol key of the intercept-metadata merge hook below. */
+  static mergeIntercept = symbols.mergeIntercept;
+  /** Symbol key of the intercept-metadata resolution helper below. */
+  static resolveIntercept = symbols.resolveIntercept;
+  /** The service name this instance is registered under. */
+  name;
+  [symbols.filter](ctx) {
+    return ctx[symbols.isolate][this.name] === this.ctx[symbols.isolate][this.name];
+  }
+  [symbols.extend](props) {
+    let self;
+    if (this[_Service.invoke]) {
+      self = createCallable(this.name, this, this[symbols.tracker]);
+    } else {
+      self = Object.create(this);
+    }
+    return Object.assign(self, props);
+  }
+  /**
+   * Merge intercept metadata values, lowest precedence first.
+   *
+   * Override to customize merging; the default is a shallow `Object.assign`.
+   *
+   * @param values — the metadata values in increasing precedence.
+   * @returns the merged metadata.
+   */
+  [symbols.mergeIntercept](...values) {
+    return Object.assign({}, ...values);
+  }
+  /**
+   * Resolve the intercept metadata visible to the current caller.
+   *
+   * The metadata injected by the fiber that admits the access applies first,
+   * then intercepts added by ancestor contexts, closest to the root first.
+   * The values are combined with `[Service.mergeIntercept]`.
+   *
+   * @returns the merged metadata.
+   */
+  [symbols.resolveIntercept]() {
+    const values = [];
+    let intercept = this.ctx[Context.intercept];
+    while (this.name in intercept) {
+      if (Object.hasOwn(intercept, this.name)) {
+        values.unshift(intercept[this.name]);
+      }
+      intercept = Object.getPrototypeOf(intercept);
+    }
+    const value = locate(this[symbols.caller] ?? this.ctx, this.name)?.fiber?.inject[this.name];
+    if (!isNullable(value)) values.unshift(value);
+    const merge3 = this[symbols.mergeIntercept] ?? _Service.prototype[symbols.mergeIntercept];
+    return merge3.apply(this, values);
+  }
+  static [Symbol.hasInstance](instance) {
+    if (!instance) return false;
+    let constructor = instance.constructor;
+    while (constructor) {
+      constructor = constructor.prototype?.constructor;
+      if (constructor === this) return true;
+      constructor &&= Object.getPrototypeOf(constructor);
+    }
+    return false;
+  }
+};
 var defaultFormatters = {
   s: (value) => String(value),
   d: (value) => Math.trunc(Number(value)),
@@ -1475,7 +1896,7 @@ var Logger = class {
       if (args2.length === 1 && args2[0] instanceof Error) {
         if (args2[0].cause) {
           this[type](args2[0].cause);
-        } else if (isAggregateError(args2[0])) {
+        } else if (isAggregateError(args2[0]) && args2[0].errors.length) {
           args2[0].errors.forEach((error62) => this[type](error62));
           return;
         }
@@ -1612,20 +2033,9 @@ var LoggerService = class _LoggerService {
       return () => this.exporters.delete(id);
     }, "ctx.logger.exporter()");
   }
-  _resolveConfig() {
-    let intercept = this.ctx[symbols.intercept];
-    const configs = [];
-    while ("logger" in intercept) {
-      if (Object.hasOwn(intercept, "logger")) {
-        configs.unshift(intercept["logger"]);
-      }
-      intercept = Object.getPrototypeOf(intercept);
-    }
-    return Object.assign({}, ...configs);
-  }
   [symbols.invoke](name2) {
-    const config2 = this._resolveConfig();
     const caller = this[symbols.caller];
+    const config2 = Service.prototype[Service.resolveIntercept].call(this);
     const fiber = (caller ?? this.ctx).fiber;
     name2 ??= config2.name;
     name2 ??= hyphenate(fiber.name);
@@ -1644,286 +2054,6 @@ var LoggerService = class _LoggerService {
     }
   }
 };
-function enhanceError(error62) {
-  const lines = error62.stack.split("\n");
-  lines.splice(0, 2, `Error: ${error62.message}`);
-  error62.stack = lines.join("\n");
-  return error62;
-}
-var RESERVED_WORDS = ["prototype", "then"];
-function isSpecialProperty(prop) {
-  return typeof prop === "symbol" || RESERVED_WORDS.includes(prop) || parseInt(prop).toString() === prop || prop.startsWith("_");
-}
-var ReflectService = class {
-  constructor(ctx) {
-    this.ctx = ctx;
-    defineProperty(this, symbols.tracker, {
-      property: "ctx",
-      noShadow: true
-    });
-    this.mixin("reflect", ["get", "set", "provide", "accessor", "mixin"]);
-    this.mixin("fiber", ["runtime", "effect"]);
-    this.mixin("registry", ["inject", "plugin"]);
-    this.mixin("events", ["on", "once", "parallel", "emit", "serial", "bail", "waterfall"]);
-  }
-  ctx;
-  /** Proxy traps implementing service resolution for every context object. */
-  static handler = {
-    get: (target, prop, ctx) => {
-      if (isSpecialProperty(prop)) {
-        return Reflect.get(target, prop, ctx);
-      }
-      if (Reflect.has(target, prop)) {
-        return getTraceable(ctx, Reflect.get(target, prop, ctx));
-      }
-      const error62 = new Error(`cannot get property "${prop}" without inject`);
-      try {
-        const def = target.reflect.props[prop];
-        if (def?.type === "accessor") {
-          return def.get.call(ctx, ctx[symbols.receiver], error62);
-        }
-        const defSite = ctx[symbols.shadow] ?? ctx;
-        if (!defSite.fiber.runtime) return ctx.reflect.get(prop, false);
-        return ctx.events.waterfall("internal/get", ctx, prop, error62, () => {
-          const key = defSite[symbols.isolate][prop];
-          let fiber = defSite.fiber;
-          while (true) {
-            let impl = fiber.committed?.[prop];
-            for (const provision of fiber.provisions) {
-              if (provision.name === prop && provision.ctx[symbols.isolate][prop] === key) impl = provision;
-            }
-            if (impl) return getTraceable(ctx, impl.value);
-            if (prop in fiber.inject) {
-              error62.message = `cannot get required service "${prop}" in inactive context`;
-              throw error62;
-            }
-            if (!fiber.runtime) throw error62;
-            if (fiber.parent[symbols.isolate][prop] !== key) throw error62;
-            fiber = fiber.parent.fiber;
-          }
-        });
-      } catch (e) {
-        throw e === error62 ? enhanceError(e) : e;
-      }
-    },
-    set: (target, prop, value, ctx) => {
-      if (isSpecialProperty(prop)) {
-        return Reflect.set(target, prop, value, ctx);
-      }
-      const error62 = new Error(`cannot set property "${prop}" without provide`);
-      const def = target.reflect.props[prop];
-      if (!def) {
-        if (!ctx.fiber.runtime) return Reflect.set(target, prop, value, ctx);
-        throw enhanceError(error62);
-      }
-      try {
-        if (def.type === "accessor") {
-          if (!def.set) return false;
-          return def.set.call(ctx, value, ctx[symbols.receiver], error62);
-        }
-        return ctx.events.waterfall("internal/set", ctx, prop, value, error62, () => {
-          return ctx.reflect.set(prop, value, error62);
-        });
-      } catch (e) {
-        throw e === error62 ? enhanceError(e) : e;
-      }
-    },
-    has: (target, prop) => {
-      if (isSpecialProperty(prop)) {
-        return Reflect.has(target, prop);
-      }
-      if (Reflect.has(target, prop)) return true;
-      return !!target.reflect.props[prop];
-    }
-  };
-  /** Service implementations, keyed by isolation label. */
-  store = /* @__PURE__ */ Object.create(null);
-  /** Declared context properties (services and accessors), by name. */
-  props = /* @__PURE__ */ Object.create(null);
-  _implCounter = 0;
-  /**
-   * Read a service from the store without the inject requirement.
-   *
-   * @param name — the service name.
-   * @param strict — when `true`, only return implementations whose providing
-   * fiber is currently active.
-   * @returns the service value, or `undefined` when not (yet) provided.
-   */
-  get(name2, strict = true) {
-    return getTraceable(this.ctx, this._getImpl(name2, strict)?.value);
-  }
-  _getImpl(name2, strict = true) {
-    const key = this.ctx[symbols.isolate][name2];
-    const impl = key && this.store[key];
-    if (!impl) return;
-    if (strict && impl.ctx.fiber.state !== 2) return;
-    return impl;
-  }
-  /**
-   * Overwrite a provided service's value.
-   *
-   * @param name — the service name.
-   * @param value — the new service value.
-   * @param error — carrier for the caller stack in diagnostics.
-   * @returns `true` on success.
-   * @throws when `name` was never provided, or was provided by another fiber.
-   */
-  set(name2, value, error62) {
-    const key = this.ctx[symbols.isolate][name2];
-    const impl = this.store[key];
-    if (!impl) {
-      throw new Error(`cannot set property "${name2}" without provide`);
-    }
-    if (impl.ctx.fiber !== this.ctx.fiber) {
-      throw new Error(`cannot set property "${name2}" in multiple fibers`);
-    }
-    impl.value = value;
-    return true;
-  }
-  /**
-   * Register a service implementation owned by the current fiber.
-   *
-   * See the `ctx.provide()` overload above for the full contract.
-   *
-   * @param name — the service name.
-   * @param value — the service value.
-   * @param check — optional availability predicate for dependents.
-   * @returns a disposer that unregisters the service.
-   */
-  provide(name2, value, check2) {
-    return this.ctx.fiber.effect(() => {
-      if (!this.props[name2]) {
-        this.props[name2] ??= { type: "service" };
-      } else if (this.props[name2].type !== "service") {
-        throw new Error(`property "${name2}" is already declared as ${this.props[name2].type}`);
-      }
-      this.props[name2] = { type: "service" };
-      this.ctx.root[symbols.isolate][name2] ??= Symbol(name2);
-      const key = this.ctx[symbols.isolate][name2];
-      const impl = { uid: ++this._implCounter, name: name2, value, ctx: this.ctx, check: check2, isolate: key, dependents: /* @__PURE__ */ new Set() };
-      if (this.store[key]) {
-        throw new Error(`service "${name2}" has been registered at <${this.store[key].ctx.fiber.name}>`);
-      }
-      this.store[key] = impl;
-      this.ctx.fiber.provisions.add(impl);
-      if (this.ctx.fiber.state === 2) {
-        this.notify([name2]);
-      }
-      return async () => {
-        if (this.store[impl.isolate] === impl) delete this.store[impl.isolate];
-        this.ctx.isolate(name2, impl.isolate).reflect.notify([name2]);
-        await new Promise((resolve4) => {
-          impl.release = resolve4;
-          if (!impl.dependents.size) resolve4();
-        });
-        impl.release = void 0;
-        this.ctx.fiber.provisions.delete(impl);
-      };
-    }, `ctx.provide(${JSON.stringify(name2)})`);
-  }
-  /**
-   * Re-evaluate every fiber that requires one of the given services.
-   *
-   * @param names — the service names that changed.
-   * @param filter — restricts notification to matching isolation scopes.
-   */
-  notify(names, filter = (ctx, name2) => ctx[symbols.isolate][name2] === this.ctx[symbols.isolate][name2]) {
-    for (const runtime of this.ctx.registry.values()) {
-      for (const fiber of runtime.fibers) {
-        let hasUpdate = false;
-        for (const name2 of names) {
-          if (!(name2 in fiber.inject)) continue;
-          if (!filter(fiber.ctx, name2)) continue;
-          hasUpdate = true;
-          fiber._checkImpl(name2);
-        }
-        if (!hasUpdate) continue;
-        fiber._refresh();
-      }
-    }
-    for (const name2 of names) {
-      const self = Object.create(this.ctx);
-      self[symbols.filter] = (target) => filter(target, name2);
-      this.ctx.events.emit(self, "internal/service", name2, this._getImpl(name2, false)?.value);
-    }
-  }
-  /**
-   * Define a computed context property backed by get/set hooks.
-   *
-   * @param name — the context property name.
-   * @param options — the `get` hook and optional `set` hook.
-   * @returns a disposer that removes the accessor.
-   */
-  accessor(name2, options) {
-    return this.ctx.fiber.effect(() => {
-      if (name2 in this.props) {
-        throw new Error(`property "${name2}" is already declared as ${this.props[name2].type}`);
-      }
-      this.props[name2] = { type: "accessor", ...options };
-      return () => delete this.props[name2];
-    }, `ctx.accessor(${JSON.stringify(name2)})`);
-  }
-  /**
-   * Expose selected members of a service directly on `ctx`.
-   *
-   * See the `ctx.mixin()` overload above for the full contract.
-   *
-   * @param source — a context property name or a source object.
-   * @param mixins — keys to forward, or a source-key → ctx-key map.
-   * @returns a disposer that removes all created accessors.
-   */
-  mixin(source, mixins) {
-    const self = this;
-    return this.ctx.fiber.effect(function* () {
-      const entries = Array.isArray(mixins) ? mixins.map((key) => [key, key]) : Object.entries(mixins);
-      const getTarget = (ctx, error62) => {
-        return ctx[source];
-      };
-      for (const [key, value] of entries) {
-        yield self.accessor(value, {
-          get(receiver, error62) {
-            const service = getTarget(this, error62);
-            if (isNullable(service)) return service;
-            const mixin = receiver ? withProps(receiver, service) : service;
-            const value2 = Reflect.get(service, key, mixin);
-            if (typeof value2 !== "function") return value2;
-            return value2.bind(mixin ?? service);
-          },
-          set(value2, receiver, error62) {
-            const service = getTarget(this, error62);
-            const mixin = receiver ? withProps(receiver, service) : service;
-            return Reflect.set(service, key, value2, mixin);
-          }
-        });
-      }
-    }, `ctx.mixin(${JSON.stringify(source)})`);
-  }
-  /**
-   * Attach this context's tracing wrapper to a value.
-   *
-   * @param value — the value to wrap.
-   * @returns the traceable wrapper (or the value itself when not applicable).
-   */
-  trace(value) {
-    return getTraceable(this.ctx, value);
-  }
-  /**
-   * Wrap a callback so calls trace `this` and arguments to this context.
-   *
-   * @param callback — the function to wrap.
-   * @returns a proxy delegating to `callback` with traced values.
-   */
-  bind(callback) {
-    return new Proxy(callback, {
-      apply: (target, thisArg, args2) => {
-        return Reflect.apply(target, this.trace(thisArg), args2.map((arg) => this.trace(arg)));
-      },
-      construct: (target, args2, newTarget) => {
-        return Reflect.construct(target, args2.map((arg) => this.trace(arg)), newTarget);
-      }
-    });
-  }
-};
 function isApplicable(object2) {
   return object2 && typeof object2 === "object" && typeof object2.apply === "function";
 }
@@ -1936,7 +2066,7 @@ function Inject(name2, config2) {
       }
       value.inject[name2] = config2;
     } else if (decorator.kind === "method") {
-      const inject2 = (value[symbols.metadata] ??= {}).inject ??= /* @__PURE__ */ Object.create(null);
+      const inject2 = (value[symbols.decorator] ??= {}).inject ??= /* @__PURE__ */ Object.create(null);
       inject2[name2] = config2;
       decorator.addInitializer(function() {
         const property2 = this[symbols.tracker]?.property;
@@ -1952,14 +2082,14 @@ function Inject(name2, config2) {
   };
 }
 ((Inject2) => {
-  function resolve4(inject2, result = /* @__PURE__ */ Object.create(null)) {
+  function resolve42(inject2, result = /* @__PURE__ */ Object.create(null)) {
     if (!inject2) return result;
     if (Array.isArray(inject2)) {
       for (const name2 of inject2) {
         result[name2] = null;
       }
     } else if (Reflect.has(inject2, symbols.checkProto)) {
-      Object.assign(result, resolve4(Object.getPrototypeOf(inject2)));
+      Object.assign(result, resolve42(Object.getPrototypeOf(inject2)));
       for (const name2 of Object.keys(inject2)) {
         result[name2] = inject2[name2] ?? null;
       }
@@ -1970,7 +2100,7 @@ function Inject(name2, config2) {
     }
     return result;
   }
-  Inject2.resolve = resolve4;
+  Inject2.resolve = resolve42;
 })(Inject || (Inject = {}));
 var RegistryService = class {
   constructor(ctx) {
@@ -2102,13 +2232,15 @@ var RegistryService = class {
   }
 };
 var Context = class _Context {
+  /** Symbol key of the root context: `ctx[Context.root]` is the application's root context, shared by every child context. */
+  static root = symbols.root;
   /** Symbol key under which a disposer exposes its {@link EffectMeta} diagnostics tree. */
   static effect = symbols.effect;
   /** Symbol key for a context's listener filter, consulted on every event dispatch. */
   static filter = symbols.filter;
-  /** Symbol key of the isolation map (see the `Context[symbols.isolate]` property). */
+  /** Symbol key of the isolation map: `ctx[Context.isolate]` maps each service name to its scope label. */
   static isolate = symbols.isolate;
-  /** Symbol key of the intercept map (see the `Context[symbols.intercept]` property). */
+  /** Symbol key of the intercept map: `ctx[Context.intercept]` maps each service name to its intercept metadata. */
   static intercept = symbols.intercept;
   /**
    * Returns true for Cordis context proxies and context prototypes.
@@ -2131,7 +2263,7 @@ var Context = class _Context {
     this[symbols.isolate] = /* @__PURE__ */ Object.create(null);
     this[symbols.intercept] = /* @__PURE__ */ Object.create(null);
     const self = new Proxy(this, ReflectService.handler);
-    this.root = self;
+    this[symbols.root] = self;
     this.baseUrl = void 0;
     this.fiber = new Fiber(self, {}, /* @__PURE__ */ Object.create(null), null, () => []);
     this.reflect = new ReflectService(self);
@@ -2169,6 +2301,9 @@ var Context = class _Context {
    * resolve against the new label instead of the parent's, so a different
    * implementation can be provided without affecting the parent scope.
    * Passing the same `label` to two `isolate()` calls joins their scopes.
+   * The returned context and plugins started below it never fall back to the
+   * enclosing plugin's injected `name`, even when `label` equals the parent's
+   * label; until a provider in the new scope supplies `name`, reading it throws.
    *
    * @param name — the service name to isolate.
    * @param label — scope label to join; defaults to a fresh unique symbol.
@@ -2185,103 +2320,16 @@ var Context = class _Context {
     return this.extend({ [symbols.intercept]: intercept });
   }
 };
-var Service = class _Service {
-  /**
-   * Register this instance as `name` in the current context.
-   *
-   * Calls `ctx.reflect.provide(name, this, this[Service.check])`, so the
-   * service is unregistered automatically when the owning fiber unloads.
-   * Services with a `[Service.invoke]` body return a callable instance.
-   *
-   * @param ctx — the context to register in (stored as `this.ctx`).
-   * @param name — the service name; defaults to the static `provide` field.
-   */
-  constructor(ctx, name2) {
-    this.ctx = ctx;
-    name2 ??= this.constructor["provide"];
-    let self = this;
-    const tracker = {
-      associate: name2,
-      property: "ctx"
-    };
-    if (self[symbols.invoke]) {
-      self = createCallable(name2, joinPrototype(Object.getPrototypeOf(this), Function.prototype), tracker);
-    }
-    self.ctx = ctx;
-    self.name = name2;
-    defineProperty(self, symbols.tracker, tracker);
-    self.ctx.reflect.provide(name2, self, this[symbols.check]);
-    return self;
-  }
-  ctx;
-  /** Symbol key of an instance method run after construction (class plugins). */
-  static init = symbols.init;
-  /** Symbol key of the availability predicate passed to `ctx.provide()`. */
-  static check = symbols.check;
-  /** Symbol key of the phantom intercept-config type parameter. */
-  static config = symbols.config;
-  /** Symbol key of the call body making a service callable (e.g. `ctx.logger()`). */
-  static invoke = symbols.invoke;
-  /** Symbol key of the helper deriving an extended service instance. */
-  static extend = symbols.extend;
-  /** Symbol key of the tracker metadata used for context tracing. */
-  static tracker = symbols.tracker;
-  /** Symbol key of the intercept-config resolution helper below. */
-  static resolveConfig = symbols.resolveConfig;
-  /** The service name this instance is registered under. */
-  name;
-  [symbols.filter](ctx) {
-    return ctx[symbols.isolate][this.name] === this.ctx[symbols.isolate][this.name];
-  }
-  [symbols.extend](props) {
-    let self;
-    if (this[_Service.invoke]) {
-      self = createCallable(this.name, this, this[symbols.tracker]);
-    } else {
-      self = Object.create(this);
-    }
-    return Object.assign(self, props);
-  }
-  /**
-   * Merge intercept config from ancestors with optional base and head values.
-   *
-   * Entries added closer to the root apply first; `base` is prepended and
-   * `head` appended. Uses `Config.merge` when the service declares one,
-   * otherwise a shallow `Object.assign`.
-   *
-   * @param base — lowest-precedence config merged before all intercepts.
-   * @param head — highest-precedence config merged after all intercepts.
-   * @returns the merged config.
-   */
-  [symbols.resolveConfig](base, head) {
-    let intercept = this.ctx[Context.intercept];
-    const configs = [];
-    while (this.name in intercept) {
-      if (Object.hasOwn(intercept, this.name)) {
-        configs.unshift(intercept[this.name]);
-      }
-      intercept = Object.getPrototypeOf(intercept);
-    }
-    if (base) configs.unshift(base);
-    if (head) configs.push(head);
-    if (this["Config"]?.merge) {
-      return this["Config"].merge(...configs);
-    } else {
-      return Object.assign({}, ...configs);
-    }
-  }
-  static [Symbol.hasInstance](instance) {
-    if (!instance) return false;
-    let constructor = instance.constructor;
-    while (constructor) {
-      constructor = constructor.prototype?.constructor;
-      if (constructor === this) return true;
-      constructor &&= Object.getPrototypeOf(constructor);
-    }
-    return false;
+var HarnessError = class extends Error {
+  /** Stable machine-routable failure class (e.g. `RATE_LIMIT`); route on this, never by parsing `message`. */
+  code;
+  constructor(message, code, options) {
+    super(message, options);
+    this.code = code;
+    this.name = new.target.name;
   }
 };
-var RemoteError = class extends Error {
+var RemoteError = class extends HarnessError {
   /**
    * @param code - stable failure code declared in {@link RemoteErrorDetailsMap}.
    * @param message - human diagnostic carried across the wire.
@@ -2289,7 +2337,7 @@ var RemoteError = class extends Error {
    * @param options - standard Error options (`cause` survives in-process only).
    */
   constructor(code, message, details, options) {
-    super(message, options);
+    super(message, code, options);
     this.code = code;
     this.details = details;
     this.name = "RemoteError";
@@ -2327,8 +2375,8 @@ var TypertRemoteService = class extends Service {
   }
 };
 function provideInvocationAccessor(ctx) {
-  if (Object.hasOwn(ctx.root.reflect.props, "invocation")) return;
-  ctx.root.accessor("invocation", { get: () => void 0 });
+  if (Object.hasOwn(ctx[Context.root].reflect.props, "invocation")) return;
+  ctx[Context.root].accessor("invocation", { get: () => void 0 });
 }
 function Remote(methodExportOrOptions, context) {
   if (typeof methodExportOrOptions === "string") {
@@ -3212,6 +3260,144 @@ function brandString(value) {
 function brandNumber(value) {
   return value;
 }
+var LLM_FAILURE_CODES = {
+  ABORTED: {},
+  ACCOUNT_QUOTA: {},
+  ACCOUNT_SIGN_IN_REQUIRED: {},
+  ACCOUNT_TOKEN_INVALID: {},
+  AUTH: {},
+  CLIENT_UPGRADE_REQUIRED: {},
+  CONTENT_REFUSED: {},
+  CONTEXT_WINDOW_EXCEEDED: {},
+  DISCOVERY_FAILED: {},
+  DISCOVERY_UNSUPPORTED: {},
+  DUPLICATE_ADAPTER: {},
+  DUPLICATE_DIRECTORY: {},
+  DUPLICATE_DISCOVERY: {},
+  EMPTY_RESPONSE: { retryChoice: true },
+  FILES_API: {},
+  IMAGE_OFFLOAD_REQUIRED: {},
+  INVALID_ADAPTER: {},
+  INVALID_CATALOG: {},
+  INVALID_CONFIG: {},
+  INVALID_CREDENTIAL: {},
+  INVALID_DIRECTORY: {},
+  INVALID_DISCOVERY: {},
+  INVALID_MODEL_CONTEXT: {},
+  INVALID_MODEL_INFO: {},
+  INVALID_MODEL_MAX_TOKENS: {},
+  INVALID_MODEL_REASONING: {},
+  INVALID_PREPARED_CALL: {},
+  INVALID_REPLAY_STATE: {},
+  INVALID_REQUEST: {},
+  INVALID_RESPONSE: {},
+  MALFORMED_RESPONSE: { retryChoice: true },
+  MISSING_CREDENTIAL: {},
+  MODEL_SWITCH_COMPACTION_FAILED: {},
+  MODEL_UNSUPPORTED: {},
+  NO_ADAPTER: {},
+  NO_CREDENTIAL_STORE: {},
+  NO_DISCOVERY: {},
+  PI_AI_ERROR: {},
+  QUOTA: { retryChoice: true },
+  RATE_LIMIT: { retryChoice: true },
+  REGISTRATION_DISPOSED: {},
+  REQUEST_EXTENSION: {},
+  REQUEST_HEADERS: {},
+  SERVER: { retryChoice: true },
+  STREAM_CLOSED: { retryChoice: true },
+  TIMEOUT: { retryChoice: true },
+  TRANSPORT: { retryChoice: true },
+  UNKNOWN: {},
+  UNKNOWN_MODEL: {},
+  UNSTORABLE_PROVIDER_ID: {},
+  UNSUPPORTED_CONTENT: {},
+  UNSUPPORTED_OPTION: {},
+  UNSUPPORTED_REASONING_EFFORT: {}
+};
+var RETRY_CODE_CHOICES = Object.freeze(
+  Object.keys(LLM_FAILURE_CODES).filter((code) => "retryChoice" in LLM_FAILURE_CODES[code])
+);
+var CONTEXT_WINDOW_EXCEEDED_CODE = "CONTEXT_WINDOW_EXCEEDED";
+var EMPTY_RESPONSE_CODE = "EMPTY_RESPONSE";
+var STRUCTURED_CONTEXT_OVERFLOW = new RegExp(
+  String.raw`(?:^|[^a-z0-9])context[\s_-](?:length|window)[\s_-]` + String.raw`(?:exceed(?:ed|s)?|overflow(?:ed)?|limit[\s_-]exceeded)(?:$|[^a-z0-9])`,
+  "i"
+);
+var TOO_LARGE_FOR_CONTEXT = new RegExp(
+  String.raw`\b(?:request|prompt|input|messages?)\s+(?:is\s+|are\s+)?` + String.raw`too\s+(?:large|long)\s+for\s+(?:(?:this|the)\s+)?` + String.raw`(?:model(?:'s)?\s+)?context(?:\s+window)?\b`,
+  "i"
+);
+var EXCEEDS_MODEL_CONTEXT = new RegExp(
+  String.raw`\b(?:input|prompt|request|messages?)\b.{0,40}` + String.raw`\b(?:exceed(?:s|ed)?|overflows?|is\s+larger\s+than)\b.{0,40}` + String.raw`\b(?:the\s+)?(?:model(?:'s)?\s+)?context(?:\s+(?:length|window))?\b`,
+  "i"
+);
+function errorChain(value) {
+  const path3 = /* @__PURE__ */ new Set();
+  const render = (current) => {
+    if (path3.has(current)) return "<circular cause>";
+    path3.add(current);
+    try {
+      if (!(current instanceof Error)) {
+        if (typeof current === "object" && current !== null) {
+          const descriptor2 = Object.getOwnPropertyDescriptor(current, "message");
+          if (descriptor2 !== void 0 && "value" in descriptor2 && typeof descriptor2.value === "string") {
+            return descriptor2.value;
+          }
+        }
+        return String(current);
+      }
+      const message = current.message === "" ? current.name : current.message;
+      const members2 = current instanceof AggregateError && current.errors.length > 0 ? ` [${current.errors.map(render).join("; ")}]` : "";
+      const causeText = current.cause === void 0 || current.cause === null ? "" : render(current.cause);
+      const cause = causeText === "" || causeText === message ? "" : `: ${causeText}`;
+      return `${message}${members2}${cause}`;
+    } catch {
+      return "<unrenderable value>";
+    } finally {
+      path3.delete(current);
+    }
+  };
+  return render(value);
+}
+var IMAGE_OFFLOAD_REQUIRED_CODE = "IMAGE_OFFLOAD_REQUIRED";
+function base64Length(bytes) {
+  return Math.ceil(bytes / 3) * 4;
+}
+function* retainedImageBlocks(messages) {
+  for (const message of messages) {
+    for (const block of message.content) {
+      if (block.type === "image" && block.offloaded !== true) yield block;
+    }
+  }
+}
+function offloadedImagePrefixCount(lengths, budget2) {
+  const total = lengths.reduce((sum, bytes) => sum + bytes, 0);
+  const excessCount = budget2.maxImages === void 0 ? 0 : Math.max(0, lengths.length - budget2.maxImages);
+  const excessBytes = budget2.maxBytes === void 0 ? 0 : Math.max(0, total - budget2.maxBytes);
+  if (excessCount === 0 && excessBytes === 0) return 0;
+  const countQuantum = budget2.countQuantum ?? 1;
+  const byteQuantum = budget2.byteQuantum ?? 1;
+  const removeCount = excessCount === 0 ? 0 : Math.ceil(excessCount / countQuantum) * countQuantum;
+  const removeBytes = excessBytes === 0 ? 0 : Math.ceil(excessBytes / byteQuantum) * byteQuantum;
+  let count = 0;
+  let removedBytes = 0;
+  for (const imageBytes of lengths) {
+    const byteTargetMet = removeBytes === 0 || (byteQuantum === 1 ? removedBytes >= removeBytes : removedBytes > removeBytes);
+    if (count >= removeCount && byteTargetMet) break;
+    removedBytes += imageBytes;
+    count += 1;
+  }
+  return count;
+}
+function requiredImageOffload(messages, budget2, versionBytes) {
+  const lengths = [];
+  for (const block of retainedImageBlocks(messages)) {
+    const bytes = versionBytes(block);
+    lengths.push(budget2.representation === "base64" ? base64Length(bytes) : bytes);
+  }
+  return offloadedImagePrefixCount(lengths, budget2);
+}
 function freezeMessage(message) {
   return deepFreeze(structuredClone(message));
 }
@@ -3497,8 +3683,8 @@ function validateVolatileSchema(schema, path3 = [], blocked = false, seen = /* @
     }
   }
 }
-Schema.extend = function extend(type, resolve4) {
-  resolvers[type] = resolve4;
+Schema.extend = function extend(type, resolve42) {
+  resolvers[type] = resolve42;
 };
 Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
   if (!schema) return [data];
@@ -3911,116 +4097,6 @@ defineMethod("intersect", ["list"], ({ list }) => {
 defineMethod("transform", ["inner", "callback", "preserve"], ({ inner }, isInner) => inner.toString(isInner));
 var src_default = Schema;
 var MAX_TIMER_DELAY_MS = 2147483647;
-var HarnessError = class extends Error {
-  /** Stable machine-routable failure class (e.g. `RATE_LIMIT`); route on this, never by parsing `message`. */
-  code;
-  constructor(message, code, options) {
-    super(message, options);
-    this.code = code;
-    this.name = new.target.name;
-  }
-};
-var LLM_FAILURE_CODES = {
-  ABORTED: {},
-  ACCOUNT_QUOTA: {},
-  ACCOUNT_SIGN_IN_REQUIRED: {},
-  ACCOUNT_TOKEN_INVALID: {},
-  AUTH: {},
-  CLIENT_UPGRADE_REQUIRED: {},
-  CONTENT_REFUSED: {},
-  CONTEXT_WINDOW_EXCEEDED: {},
-  DISCOVERY_FAILED: {},
-  DISCOVERY_UNSUPPORTED: {},
-  DUPLICATE_ADAPTER: {},
-  DUPLICATE_DIRECTORY: {},
-  DUPLICATE_DISCOVERY: {},
-  EMPTY_RESPONSE: { retryChoice: true },
-  FILES_API: {},
-  IMAGE_OFFLOAD_REQUIRED: {},
-  INVALID_ADAPTER: {},
-  INVALID_CATALOG: {},
-  INVALID_CONFIG: {},
-  INVALID_CREDENTIAL: {},
-  INVALID_DIRECTORY: {},
-  INVALID_DISCOVERY: {},
-  INVALID_MODEL_CONTEXT: {},
-  INVALID_MODEL_INFO: {},
-  INVALID_MODEL_MAX_TOKENS: {},
-  INVALID_MODEL_REASONING: {},
-  INVALID_PREPARED_CALL: {},
-  INVALID_REPLAY_STATE: {},
-  INVALID_REQUEST: {},
-  INVALID_RESPONSE: {},
-  MALFORMED_RESPONSE: { retryChoice: true },
-  MISSING_CREDENTIAL: {},
-  MODEL_SWITCH_COMPACTION_FAILED: {},
-  MODEL_UNSUPPORTED: {},
-  NO_ADAPTER: {},
-  NO_CREDENTIAL_STORE: {},
-  NO_DISCOVERY: {},
-  PI_AI_ERROR: {},
-  QUOTA: { retryChoice: true },
-  RATE_LIMIT: { retryChoice: true },
-  REGISTRATION_DISPOSED: {},
-  REQUEST_EXTENSION: {},
-  REQUEST_HEADERS: {},
-  SERVER: { retryChoice: true },
-  STREAM_CLOSED: { retryChoice: true },
-  TIMEOUT: { retryChoice: true },
-  TRANSPORT: { retryChoice: true },
-  UNKNOWN: {},
-  UNKNOWN_MODEL: {},
-  UNSTORABLE_PROVIDER_ID: {},
-  UNSUPPORTED_CONTENT: {},
-  UNSUPPORTED_OPTION: {},
-  UNSUPPORTED_REASONING_EFFORT: {}
-};
-var RETRY_CODE_CHOICES = Object.freeze(
-  Object.keys(LLM_FAILURE_CODES).filter((code) => "retryChoice" in LLM_FAILURE_CODES[code])
-);
-var CONTEXT_WINDOW_EXCEEDED_CODE = "CONTEXT_WINDOW_EXCEEDED";
-var EMPTY_RESPONSE_CODE = "EMPTY_RESPONSE";
-var STRUCTURED_CONTEXT_OVERFLOW = new RegExp(
-  String.raw`(?:^|[^a-z0-9])context[\s_-](?:length|window)[\s_-]` + String.raw`(?:exceed(?:ed|s)?|overflow(?:ed)?|limit[\s_-]exceeded)(?:$|[^a-z0-9])`,
-  "i"
-);
-var TOO_LARGE_FOR_CONTEXT = new RegExp(
-  String.raw`\b(?:request|prompt|input|messages?)\s+(?:is\s+|are\s+)?` + String.raw`too\s+(?:large|long)\s+for\s+(?:(?:this|the)\s+)?` + String.raw`(?:model(?:'s)?\s+)?context(?:\s+window)?\b`,
-  "i"
-);
-var EXCEEDS_MODEL_CONTEXT = new RegExp(
-  String.raw`\b(?:input|prompt|request|messages?)\b.{0,40}` + String.raw`\b(?:exceed(?:s|ed)?|overflows?|is\s+larger\s+than)\b.{0,40}` + String.raw`\b(?:the\s+)?(?:model(?:'s)?\s+)?context(?:\s+(?:length|window))?\b`,
-  "i"
-);
-function errorChain(value) {
-  const path3 = /* @__PURE__ */ new Set();
-  const render = (current) => {
-    if (path3.has(current)) return "<circular cause>";
-    path3.add(current);
-    try {
-      if (!(current instanceof Error)) {
-        if (typeof current === "object" && current !== null) {
-          const descriptor2 = Object.getOwnPropertyDescriptor(current, "message");
-          if (descriptor2 !== void 0 && "value" in descriptor2 && typeof descriptor2.value === "string") {
-            return descriptor2.value;
-          }
-        }
-        return String(current);
-      }
-      const message = current.message === "" ? current.name : current.message;
-      const members2 = current instanceof AggregateError && current.errors.length > 0 ? ` [${current.errors.map(render).join("; ")}]` : "";
-      const causeText = current.cause === void 0 || current.cause === null ? "" : render(current.cause);
-      const cause = causeText === "" || causeText === message ? "" : `: ${causeText}`;
-      return `${message}${members2}${cause}`;
-    } catch {
-      return "<unrenderable value>";
-    } finally {
-      path3.delete(current);
-    }
-  };
-  return render(value);
-}
-var IMAGE_OFFLOAD_REQUIRED_CODE = "IMAGE_OFFLOAD_REQUIRED";
 var DEFAULT_MAX_RETRIES = 5;
 var DEFAULT_INITIAL_DELAY_MS = 500;
 var DEFAULT_MAX_DELAY_MS = 1e4;
@@ -4195,11 +4271,12 @@ function failureSnapshot(value) {
   }
 }
 function errorMessage(error62) {
+  let message;
   try {
-    const message = error62.message;
-    if (typeof message === "string" && message.length > 0) return message;
+    message = error62.message;
   } catch (_sdkMessageGetter) {
   }
+  if (typeof message === "string" && message.length > 0) return message;
   return "LLM adapter failed";
 }
 function harnessErrorCode(error62) {
@@ -4278,44 +4355,6 @@ function projectFilesToText(messages, resolvePath) {
     const content = replaceFilesWithHandles(message.content, resolvePath);
     return content === message.content ? message : { ...message, content };
   });
-}
-function base64Length(bytes) {
-  return Math.ceil(bytes / 3) * 4;
-}
-function visitImageBlocks(content, visit2) {
-  for (const block of content) {
-    if (block.type === "image") visit2(block);
-  }
-}
-function offloadedImagePrefixCount(lengths, budget) {
-  const total = lengths.reduce((sum, bytes) => sum + bytes, 0);
-  const excessCount = budget.maxImages === void 0 ? 0 : Math.max(0, lengths.length - budget.maxImages);
-  const excessBytes = budget.maxBytes === void 0 ? 0 : Math.max(0, total - budget.maxBytes);
-  if (excessCount === 0 && excessBytes === 0) return 0;
-  const countQuantum = budget.countQuantum ?? 1;
-  const byteQuantum = budget.byteQuantum ?? 1;
-  const removeCount = excessCount === 0 ? 0 : Math.ceil(excessCount / countQuantum) * countQuantum;
-  const removeBytes = excessBytes === 0 ? 0 : Math.ceil(excessBytes / byteQuantum) * byteQuantum;
-  let count = 0;
-  let removedBytes = 0;
-  for (const imageBytes of lengths) {
-    const byteTargetMet = removeBytes === 0 || (byteQuantum === 1 ? removedBytes >= removeBytes : removedBytes > removeBytes);
-    if (count >= removeCount && byteTargetMet) break;
-    removedBytes += imageBytes;
-    count += 1;
-  }
-  return count;
-}
-function requiredImageOffload(messages, budget, versionBytes) {
-  const lengths = [];
-  for (const message of messages) {
-    visitImageBlocks(message.content, (block) => {
-      if (block.offloaded === true) return;
-      const bytes = versionBytes(block);
-      lengths.push(budget.representation === "base64" ? base64Length(bytes) : bytes);
-    });
-  }
-  return offloadedImagePrefixCount(lengths, budget);
 }
 function replaceImagesForTextModel(blocks) {
   let next;
@@ -4923,7 +4962,7 @@ var LlmRuntime = class extends (_a = TypertRemoteService, _listProviders_dec = [
    * @param provider - registered provider route.
    * @param model - exact model id.
    * @param image - normalized image reference.
-   * @returns dimensions and byte target used by the adapter's request serializer.
+   * @returns maximum dimensions and byte budgets used by the request serializer; readImageRequest returns the actual encoded dimensions.
    */
   imageRequestTarget(provider, model, image) {
     return this.registration(provider).adapter.imageRequestTarget(provider, model, image);
@@ -5357,6 +5396,7 @@ var ATTACHMENT_ERROR_CODES = [
   "ATTACHMENT_NOT_FOUND",
   "ATTACHMENT_READ_FAILED",
   "ATTACHMENT_PROJECTION_UNSUPPORTED",
+  "IMAGE_REQUEST_TOO_LARGE",
   "ATTACHMENT_FILES_UNSUPPORTED"
 ];
 var IMAGE_ADMISSION_ERROR_CODE_SET = new Set(IMAGE_ADMISSION_ERROR_CODES);
@@ -5407,14 +5447,8 @@ async function admitEncodedFile(attachments2, file2) {
     ...file2.name === void 0 ? {} : { name: file2.name }
   });
 }
-function AttachmentId(value) {
-  return value;
-}
-function ImageVariantId(value) {
-  return value;
-}
-function requestImageDimensions(width, height, maxPixels) {
-  const scale = Math.min(1, Math.sqrt(maxPixels / (width * height)));
+function requestImageDimensions(width, height, maxPixels, maxWidth = Infinity, maxHeight = Infinity) {
+  const scale = Math.min(1, Math.sqrt(maxPixels / (width * height)), maxWidth / width, maxHeight / height);
   if (scale === 1) return { width, height };
   if (width >= height) {
     let projectedWidth2 = Math.max(1, Math.floor(width * scale));
@@ -5432,6 +5466,10 @@ function requestImageDimensions(width, height, maxPixels) {
     projectedWidth = Math.max(1, Math.round(projectedHeight * width / height));
   }
   return { width: projectedWidth, height: projectedHeight };
+}
+function longEdgeDimensions(width, height, longEdge) {
+  if (longEdge >= Math.max(width, height)) return { width, height };
+  return width >= height ? { width: longEdge, height: Math.max(1, Math.round(longEdge * height / width)) } : { width: Math.max(1, Math.round(longEdge * width / height)), height: longEdge };
 }
 function isEncodedImage(part) {
   return part.type === "image" && !("attachment" in part);
@@ -5594,9 +5632,9 @@ var AttachmentStore = class extends Service {
   /**
    * Generate or read one deterministic model-request version from the stored normalized image.
    * @param ref - durable provider-independent normalized attachment reference.
-   * @param target - route-chosen dimensions and byte target; an unmet byte target yields the smallest ladder output.
+   * @param target - route-chosen maximum dimensions, hard byte limit, and preferred byte target.
    * @param signal - optional cancellation.
-   * @returns request bytes and the cache/upload identity covering every transform input.
+   * @returns request bytes within the hard limit, actual encoded dimensions, and a cache/upload identity covering every transform input.
    */
   readImageRequest(ref, target, signal) {
     signal?.throwIfAborted();
@@ -5629,12 +5667,13 @@ function resolveRoot(configured, env, envName, fallback) {
 function resolveDshHome(configured, env = process.env) {
   return resolveRoot(configured, env, DSH_HOME_ENV, defaultDshHome);
 }
-function dshHomePath(...segments) {
-  return join(resolveDshHome(), ...segments);
-}
 function dshCachePath(optionsOrSegment = {}, ...segments) {
-  if (typeof optionsOrSegment === "string") return dshHomePath("cache", optionsOrSegment, ...segments);
-  return join(resolveDshHome(optionsOrSegment.dshHome), "cache", ...segments);
+  if (typeof optionsOrSegment === "string") return dshPath("cache", optionsOrSegment, ...segments);
+  return dshPath({ category: "cache", dshHome: optionsOrSegment.dshHome }, ...segments);
+}
+function dshPath(location, ...segments) {
+  const { category, dshHome } = typeof location === "string" ? { category: location, dshHome: void 0 } : location;
+  return join(resolveDshHome(dshHome), category, ...segments);
 }
 function compressionFailure(reason) {
   return reason instanceof Error ? reason : new Error("Image compression task rejected with a non-Error value.", { cause: reason });
@@ -5655,7 +5694,7 @@ var CompressionLimiter = class {
    * @returns the task result.
    */
   run(task) {
-    return new Promise((resolve4, reject) => {
+    return new Promise((resolve42, reject) => {
       const start = () => {
         this.active += 1;
         const release = () => {
@@ -5665,7 +5704,7 @@ var CompressionLimiter = class {
         void Promise.resolve().then(task).then(
           (value) => {
             release();
-            resolve4(value);
+            resolve42(value);
           },
           (error62) => {
             release();
@@ -5689,14 +5728,14 @@ function encodingLadder(prepared, hasAlpha) {
   const mediaType = hasAlpha ? "image/webp" : "image/jpeg";
   return IMAGE_ENCODING_QUALITIES.map((quality) => (() => encode(prepared.clone(), mediaType, quality)));
 }
-async function encodeFirstWithinLimit(attempts, maxBytes) {
+async function encodeFirstWithinLimit(attempts, imageTargetBytes) {
   const [first, ...remaining] = attempts;
   if (first === void 0) throw new Error("image encoding requires at least one candidate");
   let smallest = await first();
-  if (smallest.data.byteLength <= maxBytes) return smallest;
+  if (smallest.data.byteLength <= imageTargetBytes) return smallest;
   for (const attempt of remaining) {
     const candidate = await attempt();
-    if (candidate.data.byteLength <= maxBytes) return candidate;
+    if (candidate.data.byteLength <= imageTargetBytes) return candidate;
     if (candidate.data.byteLength < smallest.data.byteLength) {
       smallest = candidate;
     }
@@ -5866,7 +5905,7 @@ async function prepareImageFile(input2, limits, policy) {
   return {
     data: normalized.data,
     ref: {
-      attachmentId: AttachmentId(`sha256:${sha256}`),
+      attachmentId: brandString(`sha256:${sha256}`),
       mediaType: normalized.mediaType,
       width: normalized.width,
       height: normalized.height,
@@ -6095,7 +6134,7 @@ function storedFileObjectPath(root, sha256) {
 async function saveFileVerbatim(root, input2) {
   const sha256 = createHash2("sha256").update(input2.data).digest("hex");
   const ref = {
-    attachmentId: AttachmentId(`sha256:${sha256}`),
+    attachmentId: brandString(`sha256:${sha256}`),
     name: fileLeafName(input2.name),
     bytes: input2.data.byteLength
   };
@@ -6113,7 +6152,7 @@ async function saveFileStreamVerbatim(root, input2) {
     input2.signal
   );
   const ref = {
-    attachmentId: AttachmentId(`sha256:${stored.sha256}`),
+    attachmentId: brandString(`sha256:${stored.sha256}`),
     name: name2,
     bytes: stored.bytes
   };
@@ -6158,7 +6197,7 @@ async function* readFileStreamVerbatim(root, ref, signal) {
     throw new AttachmentError("Stored file attachment failed integrity verification.", "ATTACHMENT_CORRUPT");
   }
 }
-var REQUEST_IMAGE_TRANSFORM_VERSION = "request-image-v6";
+var REQUEST_IMAGE_TRANSFORM_VERSION = "request-image-v7";
 function digest2(value) {
   return createHash3("sha256").update(value).digest("hex");
 }
@@ -6171,15 +6210,21 @@ function checkedInteger(value, name2) {
 function validateTarget(target) {
   checkedInteger(target.width, "Image request width");
   checkedInteger(target.height, "Image request height");
-  checkedInteger(target.maxBytes, "Image request maxBytes");
+  checkedInteger(target.maxImageBytes, "Image request maxImageBytes");
+  checkedInteger(target.imageTargetBytes, "Image request imageTargetBytes");
+  if (target.imageTargetBytes > target.maxImageBytes) {
+    throw new AttachmentError("Image request imageTargetBytes must not exceed maxImageBytes.", "INVALID_ATTACHMENT_REF");
+  }
 }
-function descriptor(attachment, target) {
+function descriptor(attachment, target, policy) {
   return JSON.stringify({
     transformVersion: REQUEST_IMAGE_TRANSFORM_VERSION,
     attachmentId: attachment.attachmentId,
     targetWidth: target.width,
     targetHeight: target.height,
-    encodedByteBudget: target.maxBytes,
+    maxImageBytes: target.maxImageBytes,
+    imageTargetBytes: target.imageTargetBytes,
+    resize: { minShrinkFactor: policy.minShrinkFactor, byteHeadroom: policy.byteHeadroom },
     encoding: {
       webpQualities: IMAGE_ENCODING_QUALITIES,
       webpEffort: WEBP_ENCODING_EFFORT,
@@ -6189,8 +6234,8 @@ function descriptor(attachment, target) {
     }
   });
 }
-function requestImageVariantId(attachment, target) {
-  return ImageVariantId(`sha256:${digest2(descriptor(attachment, target))}`);
+function requestImageVariantId(attachment, target, policy) {
+  return brandString(`sha256:${digest2(descriptor(attachment, target, policy))}`);
 }
 function pipeline(attachment, target) {
   const byWidth = attachment.ref.width >= attachment.ref.height;
@@ -6200,8 +6245,8 @@ function sourcePipeline(attachment) {
   const sharp = requireSharp();
   return sharp(attachment.data, { failOn: "error", limitInputPixels: false }).toColourspace("srgb");
 }
-async function createRequestImage(attachment, target, hasAlpha) {
-  if (target.width >= attachment.ref.width && target.height >= attachment.ref.height && attachment.data.byteLength <= target.maxBytes) {
+async function createRequestImage(attachment, target, hasAlpha, policy, signal) {
+  if (target.width >= attachment.ref.width && target.height >= attachment.ref.height && attachment.data.byteLength <= target.imageTargetBytes) {
     return {
       data: attachment.data,
       mediaType: attachment.ref.mediaType,
@@ -6209,11 +6254,31 @@ async function createRequestImage(attachment, target, hasAlpha) {
       height: attachment.ref.height
     };
   }
-  const encodedVersion = await encodeFirstWithinLimit(
-    encodingLadder(pipeline(attachment, target), hasAlpha),
-    target.maxBytes
-  );
-  return isExhaustedEncoding(encodedVersion) ? encodedVersion.smallest : encodedVersion;
+  const source = attachment.ref;
+  let dimensions = longEdgeDimensions(source.width, source.height, source.width >= source.height ? target.width : target.height);
+  if (dimensions.width > target.width || dimensions.height > target.height) {
+    dimensions = requestImageDimensions(source.width, source.height, Infinity, target.width, target.height);
+  }
+  for (; ; ) {
+    signal?.throwIfAborted();
+    const encoded = await encodeFirstWithinLimit(
+      encodingLadder(pipeline(attachment, dimensions), hasAlpha),
+      target.imageTargetBytes
+    );
+    signal?.throwIfAborted();
+    const candidate = isExhaustedEncoding(encoded) ? encoded.smallest : encoded;
+    if (candidate.data.byteLength <= target.maxImageBytes) return candidate;
+    const longEdge = Math.max(candidate.width, candidate.height);
+    if (longEdge === 1) {
+      throw new AttachmentError(
+        `Image still exceeds the ${target.maxImageBytes}-byte request limit at 1x1 pixels. Increase the image byte limit.`,
+        "IMAGE_REQUEST_TOO_LARGE"
+      );
+    }
+    const divisor = Math.max(policy.minShrinkFactor, Math.sqrt(candidate.data.byteLength / (policy.byteHeadroom * target.maxImageBytes)));
+    const nextEdge = Math.max(1, Math.min(longEdge - 1, Math.floor(longEdge / divisor)));
+    dimensions = longEdgeDimensions(attachment.ref.width, attachment.ref.height, nextEdge);
+  }
 }
 function cachePath(root, hash2) {
   return join4(root, "request-images", hash2.slice(0, 2), hash2);
@@ -6221,6 +6286,7 @@ function cachePath(root, hash2) {
 async function readCached(path3, target, expectedAlpha, signal) {
   try {
     const data = new Uint8Array(await readFile2(path3, { signal }));
+    if (data.byteLength > target.maxImageBytes) return void 0;
     const detected = await probeImage(data);
     if (detected.depth !== "uchar" || detected.space !== "srgb" || detected.width > target.width || detected.height > target.height || !encodedAlphaIsCompatible(expectedAlpha, detected)) return void 0;
     return { data, mediaType: detected.mediaType, width: detected.width, height: detected.height, hasAlpha: detected.hasAlpha };
@@ -6250,15 +6316,15 @@ async function writeCached(path3, data) {
     await rm(temporary, { force: true });
   }
 }
-async function readRequestImageFile(root, attachment, target, signal) {
+async function readRequestImageFile(root, attachment, target, policy, signal) {
   signal?.throwIfAborted();
   validateTarget(target);
   const source = await probeImage(attachment.data);
-  const variantId = requestImageVariantId(attachment.ref, target);
+  const variantId = requestImageVariantId(attachment.ref, target, policy);
   const hash2 = String(variantId).slice("sha256:".length);
   const path3 = cachePath(root, hash2);
   const cached2 = await readCached(path3, target, source.hasAlpha, signal);
-  const created = cached2 ?? await createRequestImage(attachment, target, source.hasAlpha);
+  const created = cached2 ?? await createRequestImage(attachment, target, source.hasAlpha, policy, signal);
   const version3 = cached2 ?? (created.data === attachment.data ? { ...created, hasAlpha: source.hasAlpha } : await verifyRequestImage(created, source.hasAlpha));
   signal?.throwIfAborted();
   if (cached2 === void 0 && version3.data !== attachment.data) await writeCached(path3, version3.data);
@@ -6285,6 +6351,8 @@ var DEFAULT_NORMALIZED_IMAGE_MAX_DIMENSION = 8192;
 var DEFAULT_NORMALIZED_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 var DEFAULT_IMAGE_COMPRESSION_CONCURRENCY = 2;
 var MAX_IMAGE_COMPRESSION_CONCURRENCY = 8;
+var DEFAULT_REQUEST_IMAGE_MIN_SHRINK_FACTOR = 1.1;
+var DEFAULT_REQUEST_IMAGE_BYTE_HEADROOM = 0.95;
 function abortReason(signal) {
   const reason = signal.reason;
   return reason instanceof Error ? reason : new Error("Attachment request cancelled with a non-Error reason.", { cause: reason });
@@ -6313,7 +6381,7 @@ var SharedRequest = class {
       released = true;
       this.release(cancelled, signal);
     };
-    return new Promise((resolve4, reject) => {
+    return new Promise((resolve42, reject) => {
       const abort = () => {
         release(true);
         reject(abortReason(signal));
@@ -6322,7 +6390,7 @@ var SharedRequest = class {
       void this.promise.then((value) => {
         signal.removeEventListener("abort", abort);
         release(false);
-        resolve4(value);
+        resolve42(value);
       }, (error62) => {
         signal.removeEventListener("abort", abort);
         release(false);
@@ -6348,6 +6416,8 @@ var LocalAttachmentStore = class extends AttachmentStore {
     normalizedImageMaxPixels: src_default.number().step(1).min(1).default(DEFAULT_NORMALIZED_IMAGE_MAX_PIXELS),
     normalizedImageMaxDimension: src_default.number().step(1).min(1).default(DEFAULT_NORMALIZED_IMAGE_MAX_DIMENSION),
     normalizedImageMaxBytes: src_default.number().step(1).min(1).default(DEFAULT_NORMALIZED_IMAGE_MAX_BYTES),
+    requestImageMinShrinkFactor: src_default.number().min(1 + Number.EPSILON).max(Number.MAX_VALUE).default(DEFAULT_REQUEST_IMAGE_MIN_SHRINK_FACTOR),
+    requestImageByteHeadroom: src_default.number().min(Number.MIN_VALUE).max(1).default(DEFAULT_REQUEST_IMAGE_BYTE_HEADROOM),
     imageCompressionConcurrency: src_default.number().step(1).min(1).max(MAX_IMAGE_COMPRESSION_CONCURRENCY).default(DEFAULT_IMAGE_COMPRESSION_CONCURRENCY)
   });
   /** Absolute versioned storage root. */
@@ -6357,6 +6427,7 @@ var LocalAttachmentStore = class extends AttachmentStore {
   normalizationPolicy;
   /** Resolved instance-level compression limit. */
   imageCompressionConcurrency;
+  requestImageResizePolicy;
   cacheRoot;
   compression;
   requestInflight = /* @__PURE__ */ new Map();
@@ -6378,6 +6449,15 @@ var LocalAttachmentStore = class extends AttachmentStore {
       maxDimension: config2.normalizedImageMaxDimension ?? DEFAULT_NORMALIZED_IMAGE_MAX_DIMENSION,
       maxBytes: config2.normalizedImageMaxBytes ?? DEFAULT_NORMALIZED_IMAGE_MAX_BYTES
     });
+    const minShrinkFactor = config2.requestImageMinShrinkFactor ?? DEFAULT_REQUEST_IMAGE_MIN_SHRINK_FACTOR;
+    const byteHeadroom = config2.requestImageByteHeadroom ?? DEFAULT_REQUEST_IMAGE_BYTE_HEADROOM;
+    if (!Number.isFinite(minShrinkFactor) || minShrinkFactor <= 1) {
+      throw new Error("attachment-local: requestImageMinShrinkFactor must be a finite number greater than one");
+    }
+    if (!Number.isFinite(byteHeadroom) || byteHeadroom <= 0 || byteHeadroom > 1) {
+      throw new Error("attachment-local: requestImageByteHeadroom must be a finite number in (0, 1]");
+    }
+    this.requestImageResizePolicy = Object.freeze({ minShrinkFactor, byteHeadroom });
     const compressionConcurrency = config2.imageCompressionConcurrency ?? DEFAULT_IMAGE_COMPRESSION_CONCURRENCY;
     if (!Number.isSafeInteger(compressionConcurrency) || compressionConcurrency < 1 || compressionConcurrency > MAX_IMAGE_COMPRESSION_CONCURRENCY) {
       throw new Error(
@@ -6428,7 +6508,7 @@ var LocalAttachmentStore = class extends AttachmentStore {
   }
   requestVersion(ref, target, stored, signal) {
     signal?.throwIfAborted();
-    const variantId = requestImageVariantId(ref, target);
+    const variantId = requestImageVariantId(ref, target, this.requestImageResizePolicy);
     const key = String(variantId);
     let operation = this.requestInflight.get(key);
     if (operation?.controller.signal.aborted) {
@@ -6441,6 +6521,7 @@ var LocalAttachmentStore = class extends AttachmentStore {
           this.cacheRoot,
           stored ?? await this.readImage(ref, sharedSignal),
           target,
+          this.requestImageResizePolicy,
           sharedSignal
         );
         return request;
@@ -6568,9 +6649,6 @@ function apply(ctx) {
     return true;
   });
 }
-function CompactionId(id) {
-  return id;
-}
 var balanceCacheBySession = /* @__PURE__ */ new WeakMap();
 function eventDelta(event) {
   switch (event.type) {
@@ -6660,2488 +6738,6 @@ var ManualCompactionError = class extends Error {
 var CompactionEngine = class extends Service {
   constructor(ctx) {
     super(ctx, "compaction");
-  }
-};
-var DEFAULT_THRESHOLD_RATIO = 0.8;
-var DEFAULT_RETAIN_RATIO = 0.16;
-var POLICY_CONFIG_KEYS = [
-  "thresholdRatio",
-  "headroomTokens",
-  "retainRatio",
-  "retainTokens",
-  "summarizationProvider",
-  "summarizationModel",
-  "maxTokens",
-  "compactionRetries",
-  "maxOverflowRetries"
-];
-var BASIC_COMPACT_CONFIG_KEYS = /* @__PURE__ */ new Set([
-  ...POLICY_CONFIG_KEYS,
-  "modelPolicies",
-  "auto"
-]);
-var MODEL_POLICY_KEYS = /* @__PURE__ */ new Set([
-  "provider",
-  "model",
-  ...POLICY_CONFIG_KEYS
-]);
-var TargetPressureConfigError = class extends Error {
-  /**
-   * @param targetKey - exact provider/model route used as the warning key.
-   * @param message - actionable configuration failure detail.
-   */
-  constructor(targetKey, message) {
-    super(message);
-    this.targetKey = targetKey;
-  }
-  targetKey;
-};
-function resolveConfig2(config2 = {}) {
-  validateKeys2(config2, BASIC_COMPACT_CONFIG_KEYS, "BasicCompactionConfig");
-  validatePolicy(config2, "BasicCompactionConfig");
-  if (config2.auto !== void 0 && typeof config2.auto !== "boolean") {
-    throw new Error("BasicCompactionConfig: auto must be a boolean");
-  }
-  const headroomTokens = config2.headroomTokens ?? 65536;
-  const maxTokens = config2.maxTokens ?? headroomTokens;
-  assertPositiveInteger("BasicCompactionConfig.maxTokens (explicit or from headroomTokens)", maxTokens);
-  const thresholdRatio = config2.thresholdRatio ?? DEFAULT_THRESHOLD_RATIO;
-  const retention = resolveRetention(config2, { retainRatio: DEFAULT_RETAIN_RATIO });
-  validateRatioRetention(thresholdRatio, retention, "BasicCompactionConfig");
-  const modelPolicies = resolveModelPolicies(config2.modelPolicies);
-  for (const [index, policy] of modelPolicies.entries()) {
-    if (policy.maxTokens === void 0 && config2.maxTokens === void 0 && policy.headroomTokens !== void 0) {
-      policy.maxTokens = policy.headroomTokens;
-    }
-    assertPositiveInteger(
-      `BasicCompactionConfig: modelPolicies[${index}].maxTokens (explicit or from headroomTokens)`,
-      policy.maxTokens ?? maxTokens
-    );
-    validateRatioRetention(
-      policy.thresholdRatio ?? thresholdRatio,
-      resolveRetention(policy, retention),
-      `BasicCompactionConfig: modelPolicies[${index}]`
-    );
-  }
-  return deepFreeze({
-    thresholdRatio,
-    headroomTokens,
-    ...retention,
-    summarizationProvider: config2.summarizationProvider ?? "",
-    summarizationModel: config2.summarizationModel ?? "",
-    maxTokens,
-    compactionRetries: config2.compactionRetries ?? 1,
-    maxOverflowRetries: config2.maxOverflowRetries ?? 1,
-    modelPolicies,
-    auto: config2.auto ?? true
-  });
-}
-function resolveTargetPolicy(config2, target) {
-  const override = config2.modelPolicies.find((policy) => policy.provider === target.provider && policy.model === target.model);
-  const inheritedRetention = config2.retainTokens === void 0 ? { retainRatio: config2.retainRatio } : { retainTokens: config2.retainTokens };
-  return deepFreeze({
-    target: { provider: target.provider, model: target.model },
-    thresholdRatio: override?.thresholdRatio ?? config2.thresholdRatio,
-    headroomTokens: override?.headroomTokens ?? config2.headroomTokens,
-    ...resolveRetention(override ?? {}, inheritedRetention),
-    summarizationProvider: override?.summarizationProvider ?? config2.summarizationProvider,
-    summarizationModel: override?.summarizationModel ?? config2.summarizationModel,
-    maxTokens: override?.maxTokens ?? config2.maxTokens,
-    compactionRetries: override?.compactionRetries ?? config2.compactionRetries,
-    maxOverflowRetries: override?.maxOverflowRetries ?? config2.maxOverflowRetries
-  });
-}
-function resolveCompactSpec(policy, contextWindow, reservedCompletionTokens2) {
-  const targetKey = `${policy.target.provider}/${policy.target.model}`;
-  if (!Number.isInteger(contextWindow) || contextWindow <= 0) {
-    throw new TargetPressureConfigError(
-      targetKey,
-      `BasicCompactionConfig: contextWindow (${contextWindow}) must be a positive integer`
-    );
-  }
-  if (!Number.isInteger(reservedCompletionTokens2) || reservedCompletionTokens2 < 0) {
-    throw new TargetPressureConfigError(
-      targetKey,
-      `BasicCompactionConfig: reservedCompletionTokens (${reservedCompletionTokens2}) must be a non-negative integer`
-    );
-  }
-  const messageBudgetTokens = contextWindow - reservedCompletionTokens2;
-  if (messageBudgetTokens <= 0) {
-    throw new TargetPressureConfigError(
-      targetKey,
-      `compaction-basic: ${targetKey} reserves ${reservedCompletionTokens2} completion tokens of its ${contextWindow}-token context window, leaving no message budget; configure the adapter model's contextWindow above the effective request maxTokens`
-    );
-  }
-  const pressureBudgetTokens = messageBudgetTokens - policy.headroomTokens;
-  if (pressureBudgetTokens <= 0) {
-    throw new TargetPressureConfigError(
-      targetKey,
-      `compaction-basic: ${targetKey} reserves ${reservedCompletionTokens2} completion tokens and ${policy.headroomTokens} headroom tokens of its ${contextWindow}-token context window, leaving no pressure budget; reduce the effective request maxTokens or compaction headroomTokens, or configure a larger adapter model contextWindow`
-    );
-  }
-  const thresholdTokens = Math.floor(Math.min(
-    contextWindow * policy.thresholdRatio,
-    pressureBudgetTokens
-  ));
-  const retainTokens = policy.retainTokens === void 0 ? Math.floor(messageBudgetTokens * policy.retainRatio) : policy.retainTokens;
-  if (retainTokens >= thresholdTokens) {
-    throw new TargetPressureConfigError(
-      targetKey,
-      `BasicCompactionConfig: ${policy.target.provider}/${policy.target.model} retainTokens (${retainTokens}) must be less than threshold tokens ${thresholdTokens}`
-    );
-  }
-  return deepFreeze({
-    target: { ...policy.target },
-    contextWindow,
-    thresholdRatio: policy.thresholdRatio,
-    thresholdTokens,
-    retainTokens,
-    summarizationProvider: policy.summarizationProvider,
-    summarizationModel: policy.summarizationModel,
-    maxTokens: policy.maxTokens,
-    compactionRetries: policy.compactionRetries,
-    maxOverflowRetries: policy.maxOverflowRetries
-  });
-}
-function resolveRetention(config2, fallback) {
-  if (config2.retainTokens !== void 0) return { retainTokens: config2.retainTokens };
-  if (config2.retainRatio !== void 0) return { retainRatio: config2.retainRatio };
-  return fallback;
-}
-function validateRatioRetention(thresholdRatio, retention, name2) {
-  if (retention.retainRatio !== void 0 && retention.retainRatio >= thresholdRatio) {
-    throw new Error(
-      `${name2}: retainRatio (${retention.retainRatio}) must be less than the resolved thresholdRatio (${thresholdRatio})`
-    );
-  }
-}
-function resolveModelPolicies(configured) {
-  if (configured === void 0) return [];
-  if (!Array.isArray(configured)) {
-    throw new Error("BasicCompactionConfig: modelPolicies must be an array");
-  }
-  const seen = /* @__PURE__ */ new Set();
-  return configured.map((source, index) => {
-    const name2 = `BasicCompactionConfig: modelPolicies[${index}]`;
-    assertModelPolicy(source, name2);
-    const key = `${source.provider}\0${source.model}`;
-    if (seen.has(key)) {
-      throw new Error(
-        `BasicCompactionConfig: duplicate model policy for ${source.provider}/${source.model}`
-      );
-    }
-    seen.add(key);
-    return { ...source };
-  });
-}
-function assertModelPolicy(source, name2) {
-  if (!isUnknownRecord(source)) throw new Error(`${name2} must be an object`);
-  validateKeys2(source, MODEL_POLICY_KEYS, name2);
-  assertNonEmptyString(`${name2}.provider`, source.provider);
-  assertNonEmptyString(`${name2}.model`, source.model);
-  validatePolicy(source, name2);
-}
-function validatePolicy(config2, name2) {
-  const thresholdRatio = config2.thresholdRatio;
-  const headroomTokens = config2.headroomTokens;
-  const retainRatio = config2.retainRatio;
-  const retainTokens = config2.retainTokens;
-  const maxTokens = config2.maxTokens;
-  const compactionRetries = config2.compactionRetries;
-  const maxOverflowRetries = config2.maxOverflowRetries;
-  if (thresholdRatio !== void 0) assertRatio(`${name2}.thresholdRatio`, thresholdRatio);
-  if (headroomTokens !== void 0) assertNonNegativeInteger(`${name2}.headroomTokens`, headroomTokens);
-  if (retainRatio !== void 0) assertRatio(`${name2}.retainRatio`, retainRatio);
-  if (retainTokens !== void 0) assertNonNegativeInteger(`${name2}.retainTokens`, retainTokens);
-  if (retainRatio !== void 0 && retainTokens !== void 0) {
-    throw new Error(`${name2}: retainRatio and retainTokens are mutually exclusive`);
-  }
-  if (maxTokens !== void 0) assertPositiveInteger(`${name2}.maxTokens`, maxTokens);
-  if (compactionRetries !== void 0) {
-    assertNonNegativeInteger(`${name2}.compactionRetries`, compactionRetries);
-  }
-  if (maxOverflowRetries !== void 0) {
-    assertNonNegativeInteger(`${name2}.maxOverflowRetries`, maxOverflowRetries);
-  }
-  validateSummarizationPair(config2, name2);
-}
-function validateSummarizationPair(config2, name2) {
-  const provider = config2.summarizationProvider;
-  const model = config2.summarizationModel;
-  if (provider !== void 0 && typeof provider !== "string") {
-    throw new Error(`${name2}.summarizationProvider must be a string`);
-  }
-  if (model !== void 0 && typeof model !== "string") {
-    throw new Error(`${name2}.summarizationModel must be a string`);
-  }
-  if (provider === void 0 && model === void 0) return;
-  if (provider === void 0 || model === void 0 || provider.length === 0 !== (model.length === 0)) {
-    throw new Error(
-      `${name2}: summarizationProvider and summarizationModel must be set together as an empty or non-empty pair`
-    );
-  }
-}
-function validateKeys2(config2, keys, name2) {
-  for (const key of Object.keys(config2)) {
-    if (!keys.has(key)) throw new Error(`${name2}: unknown key "${key}"`);
-  }
-}
-function isUnknownRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function assertNonEmptyString(name2, value) {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`${name2} must be a non-empty string`);
-  }
-}
-function assertPositiveInteger(name2, value) {
-  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
-    throw new Error(`${name2} (${String(value)}) must be a positive integer`);
-  }
-}
-function assertNonNegativeInteger(name2, value) {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
-    throw new Error(`${name2} (${String(value)}) must be a non-negative integer`);
-  }
-}
-function assertRatio(name2, value) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 1) {
-    throw new Error(`${name2} (${String(value)}) must be a number in (0, 1]`);
-  }
-}
-function SessionSeq(value) {
-  if (!Number.isSafeInteger(value) || value < 0 || Object.is(value, -0)) {
-    throw new TypeError(`SessionSeq must be a non-negative safe integer, got ${String(value)}`);
-  }
-  return brandNumber(value);
-}
-function SessionLogOffset(value) {
-  if (!Number.isSafeInteger(value) || value < 0 || Object.is(value, -0)) {
-    throw new TypeError(`SessionLogOffset must be a non-negative safe integer, got ${String(value)}`);
-  }
-  return brandNumber(value);
-}
-var SESSION_FORMAT_VERSION = 4;
-var KNOWN_SESSION_EVENT_TYPES = /* @__PURE__ */ new Set([
-  "agent-preset/selected",
-  "agent/inbox/spliced",
-  "approval/asked",
-  "approval/decided",
-  "approval/policy",
-  "assistant/attempt",
-  "assistant/message",
-  "command/done",
-  "command/run",
-  "compaction/end",
-  "compaction/prune",
-  "compaction/start",
-  "compaction/summary",
-  "deliverables/presented",
-  "developer/message",
-  "feedback/message-delete",
-  "feedback/message-put",
-  "feedback/record",
-  "goal/change",
-  "hook/invoked",
-  "hook/result",
-  "image/offload",
-  "job/registered",
-  "job/settled",
-  "llm/retry",
-  "llm/retry-started",
-  "model/selection",
-  "permission/preset",
-  "plan/mode",
-  "request/context",
-  "request/header",
-  "sandbox/mode",
-  "schedule/change",
-  "session-log-deepseek/delivery-accepted",
-  "session/end-seed",
-  "session/title",
-  "session/title-llm-request",
-  "step/end",
-  "step/start",
-  "subagent/catalog",
-  "subagent/descriptor",
-  "subagent/model-selection-policy",
-  "system/message",
-  "team/member",
-  "team/message/delivered",
-  "team/message/queued",
-  "team/mode",
-  "team/task",
-  "todo/write",
-  "tool-workflow/agent-end",
-  "tool-workflow/agent-start",
-  "tool-workflow/run-end",
-  "tool-workflow/run-start",
-  "tool/call",
-  "tool/ptc-dispatch",
-  "tool/ptc-dispatch-start",
-  "tool/result",
-  "turn/end",
-  "turn/start",
-  "user/message",
-  "web/deepseek-search-llm-request",
-  "working-directory/change",
-  "workspace/changes"
-]);
-var MESSAGE_PROJECTION_EVENT_TYPES = /* @__PURE__ */ new Set([
-  "image/offload"
-]);
-var SURFACE_EVENT_TYPES = /* @__PURE__ */ new Set([
-  "system/message",
-  "developer/message",
-  "user/message",
-  "assistant/message",
-  "tool/result"
-]);
-function isSurfaceEligibleType(type) {
-  return SURFACE_EVENT_TYPES.has(type);
-}
-function isSurfaceEvent(event) {
-  if (!SURFACE_EVENT_TYPES.has(event.type)) return false;
-  const candidate = event;
-  return candidate.surfaceOp !== void 0;
-}
-function deriveEventMessage(event, projectedMessages) {
-  const projected = projectedMessages?.get(event.seq);
-  if (projected !== void 0) return projected;
-  switch (event.type) {
-    // Ordinary prompts and injected context retain producer-owned framing.
-    // See Derived history in packages/core/session/README.md.
-    case "user/message": {
-      return event.data;
-    }
-    // Empty system and developer nodes retain their surface positions without
-    // adding wire messages. An empty assistant event hosts a max-tokens step's
-    // usage and must not inject a content-less turn into the provider transcript.
-    case "system/message":
-    case "developer/message":
-    case "assistant/message": {
-      if (event.data.message.content.length === 0) return null;
-      return event.data.message;
-    }
-    case "tool/result": {
-      return event.data.message;
-    }
-    default:
-      return null;
-  }
-}
-function isRecord2(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function validateSessionEventData(event, subject) {
-  const data = event.data;
-  if (SURFACE_EVENT_TYPES.has(event.type) && isRecord2(data)) {
-    const message = event.type === "user/message" ? data : data["message"];
-    if (isRecord2(message)) {
-      if (event.type === "developer/message" !== (message["role"] === "developer")) {
-        throw new Error(`${subject} developer/message and developer role must occur together`);
-      }
-      if (message["role"] !== "developer" && Array.isArray(message["content"]) && message["content"].some((block) => isRecord2(block) && (block["type"] === "tool-addition" || block["type"] === "tool-removal"))) {
-        throw new Error(`${subject} tool-change blocks require developer role`);
-      }
-      if (event.type === "developer/message" && Array.isArray(message["content"])) {
-        let hasAdditions = false;
-        for (const block of message["content"]) {
-          if (!isRecord2(block) || block["type"] !== "tool-addition" && block["type"] !== "tool-removal") continue;
-          if (typeof block["toolName"] !== "string" || block["toolName"].length === 0) {
-            throw new Error(`${subject} ${block["type"]} requires a nonempty toolName`);
-          }
-          if (block["type"] === "tool-addition") {
-            hasAdditions = true;
-            if (Object.hasOwn(block, "tool")) throw new Error(`${subject} tool-addition must omit inline tool definitions`);
-          }
-        }
-        if (hasAdditions ? !isEventSeq(data["headerSeq"]) : Object.hasOwn(data, "headerSeq")) {
-          throw new Error(`${subject} requires headerSeq exactly when tool additions are present`);
-        }
-      }
-    }
-  }
-  if (event.type === "request/header") {
-    if (!isRecord2(data)) throw new Error(`${subject} data must be an object`);
-    const header = data["header"];
-    if (!isRecord2(header)) throw new Error(`${subject} header must be an object`);
-    if (Object.hasOwn(header, "system")) throw new Error(`${subject} must omit header.system; use system/message`);
-    if (Array.isArray(header["tools"]) && header["tools"].length === 0) {
-      throw new Error(`${subject} must omit empty tools`);
-    }
-    const defaults = header["adapterDefaults"];
-    if (isRecord2(defaults) && Object.keys(defaults).length === 0) {
-      throw new Error(`${subject} must omit empty adapterDefaults`);
-    }
-  } else if (event.type === "tool/result") {
-    if (!isRecord2(data)) throw new Error(`${subject} data must be an object`);
-    if (data["error"] === void 0) return;
-    const message = data["message"];
-    if (!isRecord2(message) || message["isError"] !== true) {
-      throw new Error(`${subject} error requires message.isError === true`);
-    }
-  }
-}
-function createFoldState() {
-  return { nodes: [], replaceGeneration: 0, contentGeneration: 0, projectedMessages: /* @__PURE__ */ new Map(), projections: /* @__PURE__ */ new Set() };
-}
-function isEventSeq(value) {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && !Object.is(value, -0);
-}
-function isReplaceOp(value) {
-  const op = value;
-  return Object.keys(op).length === 3 && Object.hasOwn(op, "op") && Object.hasOwn(op, "startSeq") && Object.hasOwn(op, "endSeq") && op["op"] === "replace" && isEventSeq(op["startSeq"]) && isEventSeq(op["endSeq"]);
-}
-function surfaceOpOf(event) {
-  const raw = event;
-  if (!isSurfaceEligibleType(event.type)) {
-    if (!KNOWN_SESSION_EVENT_TYPES.has(event.type) && event.ignorable === true) return;
-    if (raw.surfaceOp !== void 0) {
-      throw new Error(`session event "${event.type}" is not surface-eligible and cannot carry surfaceOp`);
-    }
-    if (raw.sourceEventSeqs !== void 0) {
-      throw new Error(`session event "${event.type}" is not surface-eligible and cannot carry sourceEventSeqs`);
-    }
-    return;
-  }
-  const op = raw.surfaceOp;
-  if (op === void 0) {
-    throw new Error(`session event "${event.type}" is surface-eligible and requires a surfaceOp marker`);
-  }
-  if (op === "append") return op;
-  if (op === null || typeof op !== "object" || Array.isArray(op)) {
-    throw new Error(`session event "${event.type}" carries an invalid surfaceOp`);
-  }
-  if (!isReplaceOp(op)) {
-    throw new Error(`session event "${event.type}" carries an invalid replace surfaceOp`);
-  }
-  return op;
-}
-function assertSourceEventReferences(event, shadowedSeqs) {
-  const raw = event.sourceEventSeqs;
-  if (event.type === "assistant/message" && raw !== void 0) {
-    throw new Error("assistant/message embeds its source stream and cannot carry sourceEventSeqs");
-  }
-  const sources = /* @__PURE__ */ new Set();
-  if (raw !== void 0) {
-    if (!Array.isArray(raw)) {
-      throw new Error(`sourceEventSeqs on event at seq ${event.seq} must be an array when present`);
-    }
-    if (raw.length === 0) {
-      throw new Error("sourceEventSeqs must not be empty");
-    }
-    let nonEarlierSource;
-    for (const source of raw) {
-      if (!isEventSeq(source)) {
-        throw new Error(`session event "${event.type}" sourceEventSeqs must densely contain non-negative safe integers`);
-      }
-      sources.add(source);
-      if (nonEarlierSource === void 0 && source >= event.seq) nonEarlierSource = source;
-    }
-    if (sources.size !== raw.length) {
-      throw new Error("sourceEventSeqs must not contain duplicates");
-    }
-    if (nonEarlierSource !== void 0) {
-      throw new Error(`sourceEventSeqs must reference earlier events: ${nonEarlierSource} >= current seq ${event.seq}`);
-    }
-  }
-  const missing = shadowedSeqs.filter((seq) => !sources.has(seq));
-  if (missing.length > 0) {
-    throw new Error(`surface replace: sourceEventSeqs must include every shadowed surface node; missing ${missing.join(", ")}`);
-  }
-}
-function assertDeveloperHeader(event, read) {
-  if (event.type !== "developer/message") return;
-  validateSessionEventData(event, `developer/message at seq ${event.seq}`);
-  if (event.data.headerSeq === void 0) return;
-  const headerSeq = event.data.headerSeq;
-  const headerEvent = read(headerSeq);
-  if (headerSeq >= event.seq || headerEvent?.type !== "request/header") {
-    throw new Error("developer/message headerSeq must reference an earlier request/header");
-  }
-  for (const block of event.data.message.content) {
-    if (block.type !== "tool-addition") continue;
-    const definitions = headerEvent.data.header.tools?.filter((tool) => tool.name === block.toolName) ?? [];
-    if (definitions.length !== 1) {
-      throw new Error(`developer/message tool-addition "${block.toolName}" must name exactly one tool in headerSeq ${headerSeq}`);
-    }
-    const definition = definitions[0];
-    if (typeof definition.description !== "string" || !isRecord2(definition.parameters)) {
-      throw new Error(`developer/message tool-addition "${block.toolName}" requires a complete tool definition in headerSeq ${headerSeq}`);
-    }
-    if (Object.hasOwn(definition, "deferLoading") && definition.deferLoading !== true) {
-      throw new Error("developer/message referenced tool deferLoading must be true when present");
-    }
-  }
-}
-function validateSurfaceMetadata(event) {
-  const op = surfaceOpOf(event);
-  if (op !== void 0 && op !== "append" && (op.startSeq >= event.seq || op.endSeq >= event.seq)) {
-    throw new Error(`surface replace at seq ${event.seq}: startSeq and endSeq must reference earlier events`);
-  }
-  if (op !== void 0) assertSourceEventReferences(event, []);
-  return op;
-}
-function replacementRange(state, op) {
-  const startIdx = state.nodes.indexOf(op.startSeq);
-  if (startIdx === -1) {
-    throw new Error(`surface replace: start seq ${op.startSeq} not found in surface`);
-  }
-  const endIdx = state.nodes.indexOf(op.endSeq);
-  if (endIdx === -1) {
-    throw new Error(`surface replace: end seq ${op.endSeq} not found in surface`);
-  }
-  if (startIdx > endIdx) {
-    throw new Error(`surface replace: start seq ${op.startSeq} (index ${startIdx}) is after end seq ${op.endSeq} (index ${endIdx})`);
-  }
-  return {
-    startIdx,
-    endIdx,
-    shadowedSeqs: state.nodes.slice(startIdx, endIdx + 1)
-  };
-}
-function isDeepEqualJson(a, b) {
-  if (a === b) return true;
-  if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-    return a.every((item, i) => isDeepEqualJson(item, b[i]));
-  }
-  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
-  const aKeys = Object.keys(a);
-  const bRecord = b;
-  if (aKeys.length !== Object.keys(b).length) return false;
-  return aKeys.every((key) => Object.hasOwn(b, key) && isDeepEqualJson(a[key], bRecord[key]));
-}
-function assertToolResultRewrite(event, shadowedSeqs, read) {
-  if (event.type !== "tool/result") return;
-  if (shadowedSeqs.length !== 1) {
-    throw new Error("tool/result surface replacement must rewrite exactly one current node");
-  }
-  for (const originalSeq of shadowedSeqs) {
-    const original = read(originalSeq);
-    if (original?.type !== "tool/result") {
-      throw new Error("tool/result surface replacement must target a current tool/result");
-    }
-    const originalRest = { ...original.data };
-    const replacementRest = { ...event.data };
-    originalRest["message"] = {
-      ...original.data.message,
-      content: null
-    };
-    replacementRest["message"] = {
-      ...event.data.message,
-      content: null
-    };
-    if (!isDeepEqualJson(originalRest, replacementRest)) {
-      throw new Error("tool/result surface replacement may change only content");
-    }
-  }
-}
-function assertSystemHeadRewrite(event, state, startIdx, shadowedSeqs, read) {
-  if (startIdx !== 0) return;
-  const head = read(state.nodes[0]);
-  if (head?.type !== "system/message") return;
-  if (event.type !== "system/message" || shadowedSeqs.length !== 1) {
-    throw new Error("surface replace: node 0 holds the system prompt and may be rewritten only by a system/message over exactly that node");
-  }
-}
-function planSurfaceEvent(state, event, expectedSeq, events, baseSeq, projections, candidates) {
-  if (event.seq !== expectedSeq) {
-    throw new Error(`session event seq ${event.seq} is not contiguous; expected ${expectedSeq}`);
-  }
-  const surfaceOp = validateSurfaceMetadata(event);
-  const read = (seq) => {
-    const index = seq - baseSeq;
-    return index < events.length ? events[index] : candidates?.[index - events.length];
-  };
-  assertDeveloperHeader(event, read);
-  const projection = projections.find((item) => item.type === event.type);
-  if (projection !== void 0) {
-    let projectionEvents;
-    return { kind: "project", projection, messages: projection.project(event, {
-      nodes: state.nodes,
-      get events() {
-        return candidates === void 0 ? events : projectionEvents ??= [...events, ...candidates];
-      },
-      baseSeq,
-      messages: state.projectedMessages
-    }) };
-  }
-  if (MESSAGE_PROJECTION_EVENT_TYPES.has(event.type)) {
-    throw new Error(`session event "${event.type}" requires a message projection; load its owning plugin or supply its projection definition`);
-  }
-  if (surfaceOp === void 0) return;
-  if (surfaceOp === "append") {
-    return { kind: "append", seq: event.seq };
-  }
-  const range = replacementRange(state, surfaceOp);
-  assertSourceEventReferences(event, range.shadowedSeqs);
-  assertToolResultRewrite(event, range.shadowedSeqs, read);
-  assertSystemHeadRewrite(event, state, range.startIdx, range.shadowedSeqs, read);
-  return {
-    kind: "replace",
-    seq: event.seq,
-    start: surfaceOp.startSeq,
-    end: surfaceOp.endSeq,
-    ...range
-  };
-}
-function applySurfaceEvent(state, event, expectedSeq, events, baseSeq, projections) {
-  const plan = planSurfaceEvent(state, event, expectedSeq, events, baseSeq, projections);
-  return applySurfacePlan(state, plan);
-}
-function applySurfacePlan(state, plan) {
-  if (plan?.kind === "append") {
-    state.nodes.push(plan.seq);
-  } else if (plan?.kind === "replace") {
-    state.nodes.splice(plan.startIdx, plan.endIdx - plan.startIdx + 1, plan.seq);
-    state.replaceGeneration += 1;
-    state.contentGeneration += 1;
-  } else if (plan?.kind === "project") {
-    for (const [seq, message] of plan.messages) state.projectedMessages.set(seq, message);
-    state.projections.add(plan.projection);
-    state.contentGeneration += 1;
-  }
-  if (plan?.kind !== "replace") return;
-  return {
-    seq: plan.seq,
-    start: plan.start,
-    end: plan.end,
-    shadowedSeqs: plan.shadowedSeqs
-  };
-}
-var SurfaceManager = class {
-  /**
-   * @param log - Contiguous complete log or loaded event window.
-   * @param baseSeq - Absolute sequence of the window's first event.
-   * @param projections - live borrowed definitions; removing a used definition invalidates further reads.
-   */
-  constructor(log, baseSeq = SessionLogOffset(0), projections = []) {
-    this.log = log;
-    this.baseSeq = baseSeq;
-    this.projections = projections;
-    this._lastProcessedSeq = baseSeq === 0 ? -1 : SessionSeq(baseSeq - 1);
-  }
-  log;
-  baseSeq;
-  projections;
-  /** Shared transition state; replacement history is not retained. */
-  _state = createFoldState();
-  /** Last processed absolute seq. */
-  _lastProcessedSeq;
-  /** Candidate already validated by `validateNext`, pending exact log admission. */
-  _pendingPlan;
-  /**
-   * Validate the next candidate without mutating the committed surface.
-   * @param event - candidate event that has not entered the log yet.
-   */
-  validateNext(event) {
-    this._assertProjections();
-    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
-    const expectedSeq = SessionSeq(this.baseSeq + this.log.length);
-    this._pendingPlan = {
-      event,
-      expectedSeq,
-      plan: planSurfaceEvent(this._state, event, expectedSeq, this.log, this.baseSeq, this.projections)
-    };
-  }
-  /**
-   * Validate consecutive candidates against an isolated surface fold.
-   * @param events - candidates immediately following the committed log.
-   * @returns a callback adopting the validated fold after all candidates enter the log.
-   */
-  prepareBatch(events) {
-    this._assertProjections();
-    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
-    const lastProcessedSeq = SessionSeq(this.baseSeq + this.log.length + events.length - 1);
-    if (events.every((event) => (event.surfaceOp === void 0 || event.surfaceOp === "append") && !this.projections.some((projection) => projection.type === event.type))) {
-      const plans2 = events.map((event, index) => planSurfaceEvent(
-        this._state,
-        event,
-        SessionSeq(this.baseSeq + this.log.length + index),
-        this.log,
-        this.baseSeq,
-        this.projections,
-        events
-      ));
-      return () => {
-        for (const plan of plans2) applySurfacePlan(this._state, plan);
-        this._lastProcessedSeq = lastProcessedSeq;
-        this._pendingPlan = void 0;
-      };
-    }
-    const state = {
-      ...this._state,
-      nodes: [...this._state.nodes],
-      projectedMessages: new Map(this._state.projectedMessages),
-      projections: new Set(this._state.projections)
-    };
-    const plans = events.map((event, index) => {
-      const plan = planSurfaceEvent(
-        state,
-        event,
-        SessionSeq(this.baseSeq + this.log.length + index),
-        this.log,
-        this.baseSeq,
-        this.projections,
-        events
-      );
-      applySurfacePlan(state, plan);
-      return plan;
-    });
-    return () => {
-      for (const plan of plans) applySurfacePlan(this._state, plan);
-      this._lastProcessedSeq = lastProcessedSeq;
-      this._pendingPlan = void 0;
-    };
-  }
-  /** Monotonic count of folded positional replacements. */
-  get replaceGeneration() {
-    this._assertProjections();
-    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
-    return this._state.replaceGeneration;
-  }
-  /** Monotonic count of committed changes to existing model-visible content. */
-  get contentGeneration() {
-    this._assertProjections();
-    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
-    return this._state.contentGeneration;
-  }
-  /**
-   * Project one message with every committed message projection applied.
-   * @param event - message-producing or log-only event.
-   * @returns its immutable projected message, or null when it produces none.
-   */
-  deriveEventMessage(event) {
-    this._assertProjections();
-    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
-    return deriveEventMessage(event, this._state.projectedMessages);
-  }
-  /** Surface event sequences in model-visible order. */
-  get nodes() {
-    this._assertProjections();
-    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
-    return this._state.nodes;
-  }
-  /** Fold events appended since the previous access. */
-  _processDelta() {
-    const tailSeq = this.baseSeq + this.log.length - 1;
-    for (let seq = this._lastProcessedSeq + 1; seq <= tailSeq; seq++) {
-      const index = seq - this.baseSeq;
-      const event = this.log[index];
-      const pending = this._pendingPlan;
-      if (pending?.event === event && pending.expectedSeq === seq) {
-        applySurfacePlan(this._state, pending.plan);
-      } else {
-        applySurfaceEvent(this._state, event, SessionSeq(seq), this.log, this.baseSeq, this.projections);
-      }
-      if (pending !== void 0 && pending.expectedSeq <= seq) this._pendingPlan = void 0;
-      this._lastProcessedSeq = SessionSeq(seq);
-    }
-  }
-  /** Cached messages cannot outlive the definitions that interpreted their log. */
-  _assertProjections() {
-    const candidate = this._pendingPlan;
-    const pending = candidate !== void 0 && this.log[candidate.expectedSeq - this.baseSeq] === candidate.event ? candidate.plan : void 0;
-    const required2 = pending?.kind === "project" ? [...this._state.projections, pending.projection] : this._state.projections;
-    for (const projection of required2) {
-      if (!this.projections.includes(projection)) {
-        throw new Error(`session message projection "${projection.type}" was removed or replaced; restore the session with its owning plugin`);
-      }
-    }
-  }
-};
-function canonicalHeader(header) {
-  const adapterDefaults = header.adapterDefaults;
-  return {
-    config: header.config,
-    ...adapterDefaults?.reasoningEffort === true || adapterDefaults?.maxTokens === true ? { adapterDefaults } : {},
-    ...header.tools !== void 0 && header.tools.length > 0 ? { tools: header.tools } : {}
-  };
-}
-function sameSchema(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-function headerEquals(a, b) {
-  if (!callConfigEquals(a.config, b.config) || a.adapterDefaults?.reasoningEffort !== b.adapterDefaults?.reasoningEffort || a.adapterDefaults?.maxTokens !== b.adapterDefaults?.maxTokens) return false;
-  const at = a.tools ?? [];
-  const bt = b.tools ?? [];
-  return at.length === bt.length && at.every((tool, i) => sameSchema(tool, bt[i]));
-}
-function foldRequestHeader(events, from2) {
-  let state = from2;
-  for (const event of events) {
-    if (event.type === "request/header") state = canonicalHeader(event.data.header);
-  }
-  return state;
-}
-var ToolHistoryProjection = class {
-  /** Historical declarations indexed by the header sequence referenced by additions. */
-  headers = /* @__PURE__ */ new Map();
-  /** Definitions retained in the current declaration series, including removed tools. */
-  declared = /* @__PURE__ */ new Map();
-  /** Active definitions from the latest request header. */
-  active = [];
-  /** Active names reconstructed from the baseline and recorded updates. */
-  available = /* @__PURE__ */ new Set();
-  /** Header that starts the current declaration series; absent before the first header. */
-  baselineSeq;
-  /** Immutable request snapshot of the current baseline and resolved updates. */
-  history = deepFreeze({ tools: [], updates: [] });
-  /**
-   * Consume the next committed event in log order.
-   * @param event - a session event, including inherited events during restoration.
-   */
-  apply(event) {
-    if (event.type === "request/header") {
-      const tools = event.data.header.tools ?? [];
-      this.headers.set(event.seq, tools);
-      const redeclared = tools.some((tool) => {
-        const before = this.declared.get(tool.name);
-        return before !== void 0 && JSON.stringify(before) !== JSON.stringify(tool);
-      });
-      if (this.baselineSeq === void 0 || event.data.reason === "series" || event.data.startsSeries || redeclared) {
-        this.baselineSeq = event.seq;
-        this.declared = new Map(tools.map((tool) => [tool.name, tool]));
-        this.history = deepFreeze({ tools, updates: [] });
-        this.available = new Set(tools.map((tool) => tool.name));
-      }
-      this.active = tools;
-    } else if (event.type === "developer/message") {
-      const { message, headerSeq } = event.data;
-      const definitions = headerSeq === void 0 ? [] : this.headers.get(headerSeq);
-      const additions = message.content.flatMap((block) => {
-        if (block.type !== "tool-addition") return [];
-        const tool = definitions?.find((tool2) => tool2.name === block.toolName);
-        if (tool === void 0) throw new Error(`tool history: missing definition for ${block.toolName}`);
-        return [tool];
-      });
-      for (const tool of additions) this.declared.set(tool.name, tool);
-      for (const block of message.content) {
-        if (block.type === "tool-addition") this.available.add(block.toolName);
-        else if (block.type === "tool-removal") this.available.delete(block.toolName);
-      }
-      this.history = deepFreeze({
-        tools: this.history.tools,
-        updates: [...this.history.updates, { messageId: message.id, additions }]
-      });
-    }
-  }
-  /**
-   * Read an immutable snapshot; subsequent events do not mutate it.
-   * @returns initial declarations and historically resolved additions for the current series.
-   */
-  snapshot() {
-    if (this.active.length !== this.available.size || this.active.some((tool) => !this.available.has(tool.name))) {
-      return deepFreeze({ tools: this.active, updates: [] });
-    }
-    return this.history;
-  }
-};
-function validateSessionHeader(id, input2) {
-  if (input2 === null || typeof input2 !== "object" || Array.isArray(input2)) {
-    throw new Error("session header is not a plain JSON record");
-  }
-  const record2 = input2;
-  if (Object.hasOwn(record2, "seedLength")) {
-    throw new Error('session header has invalid field "seedLength"');
-  }
-  if (record2.version !== SESSION_FORMAT_VERSION) {
-    throw new Error(`session header version must be ${SESSION_FORMAT_VERSION}, got ${String(record2.version)}`);
-  }
-  if (record2.id !== id) {
-    throw new Error(`session header id "${String(record2.id)}" does not match session id "${id}"`);
-  }
-  if (typeof record2.createdAt !== "number" || !Number.isSafeInteger(record2.createdAt) || record2.createdAt < 0) {
-    throw new Error("session header createdAt must be a non-negative safe integer");
-  }
-  if (record2.cwd !== void 0) {
-    if (typeof record2.cwd !== "string") throw new Error("session header cwd must be a string");
-    if (!isAbsolute(record2.cwd)) {
-      throw new Error(`session header cwd must be an absolute path, got "${record2.cwd}"`);
-    }
-  }
-  if (record2.parentSession !== void 0 && typeof record2.parentSession !== "string") {
-    throw new Error("session header parentSession must be a string");
-  }
-  if (typeof record2.isSeeded !== "boolean") {
-    throw new Error("session header isSeeded must be a boolean");
-  }
-  if (record2.origin !== void 0 && record2.origin !== "subagent") {
-    throw new Error('session header origin must be "subagent"');
-  }
-  if (record2.delegationDepth !== void 0 && (typeof record2.delegationDepth !== "number" || !Number.isSafeInteger(record2.delegationDepth) || record2.delegationDepth < 0)) {
-    throw new Error("session header delegationDepth must be a non-negative safe integer");
-  }
-  if (record2.agentPreset !== void 0 && typeof record2.agentPreset !== "string") {
-    throw new Error("session header agentPreset must be a string");
-  }
-  return deepFreeze(record2);
-}
-function validateRestoredSessionHeader(id, input2) {
-  if (input2 !== null && typeof input2 === "object" && !Array.isArray(input2)) {
-    const prototype = Reflect.getPrototypeOf(input2);
-    if (prototype !== Object.prototype && prototype !== null) {
-      throw new Error("session header is not a plain JSON record");
-    }
-  }
-  return validateSessionHeader(id, input2);
-}
-function snapshotSessionHeader(id, source) {
-  const input2 = source === void 0 ? { version: SESSION_FORMAT_VERSION, id, createdAt: Date.now(), isSeeded: false } : source;
-  const snapshot2 = snapshotJsonValue(input2);
-  if (snapshot2 === void 0) throw new Error("session header is not losslessly JSON-serializable");
-  return validateSessionHeader(id, snapshot2);
-}
-function assertSessionEventEnvelope(value, index) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`seed event at index ${index} has an invalid event envelope`);
-  }
-  const event = value;
-  for (const key in event) {
-    switch (key) {
-      case "type":
-      case "seq":
-      case "time":
-      case "data":
-      case "surfaceOp":
-      case "sourceEventSeqs":
-      case "ignorable":
-        break;
-      default:
-        throw new Error(`seed event at index ${index} has an invalid event envelope`);
-    }
-  }
-  const type = event["type"];
-  const seq = event["seq"];
-  const time3 = event["time"];
-  if (typeof type !== "string" || typeof seq !== "number" || !Number.isSafeInteger(seq) || seq < 0 || Object.is(seq, -0) || typeof time3 !== "number" || !Number.isSafeInteger(time3) || event["data"] === void 0 || event["ignorable"] !== void 0 && event["ignorable"] !== true) {
-    throw new Error(`seed event at index ${index} has an invalid event envelope`);
-  }
-  validateSessionEventData(event, `seed ${type} at index ${index}`);
-  switch (type) {
-    case "request/header":
-    case "developer/message":
-    case "system/message":
-    case "user/message":
-    case "assistant/attempt":
-    case "assistant/message":
-    case "tool/result":
-      assertCurrentLlmShape(event, index);
-      break;
-  }
-}
-function assertCurrentLlmShape(event, index) {
-  const data = event["data"];
-  const record2 = typeof data === "object" && data !== null ? data : void 0;
-  if (event["type"] === "request/header") {
-    const headerRecord = record2?.["header"];
-    const config2 = headerRecord["config"];
-    if (!hasProviderModel(config2)) throw new Error(`seed request/header at index ${index} lacks provider/model`);
-    const configRecord = config2;
-    const reasoningEffort = configRecord["reasoningEffort"];
-    if (reasoningEffort !== void 0 && (typeof reasoningEffort !== "string" || reasoningEffort.length === 0)) {
-      throw new Error(`seed request/header at index ${index} has an invalid reasoningEffort`);
-    }
-    assertAdapterDefaults(headerRecord["adapterDefaults"], configRecord, index);
-    const reason = record2?.["reason"];
-    if (reason !== "initial" && reason !== "resume" && reason !== "change" && reason !== "series") {
-      throw new Error(`seed request/header at index ${index} has an invalid reason`);
-    }
-    if (record2?.["startsSeries"] !== void 0 && record2["startsSeries"] !== true) {
-      throw new Error(`seed request/header at index ${index} has an invalid startsSeries marker`);
-    }
-  }
-  const type = event["type"];
-  if (type === "assistant/attempt") {
-    assertAssistantSettlementShape(record2, type, index);
-    return;
-  }
-  if (!isMessageEventType(type)) return;
-  assertMessageEventShape(event, `seed ${type} at index ${index}`);
-  if (type === "assistant/message") {
-    assertAssistantSettlementShape(record2, type, index);
-  }
-}
-function assertAssistantSettlementShape(data, type, index) {
-  const turn = data?.["turn"];
-  const step = data?.["step"];
-  if (typeof turn !== "number" || !Number.isSafeInteger(turn) || turn < 0 || Object.is(turn, -0) || typeof step !== "number" || !Number.isSafeInteger(step) || step < 0 || Object.is(step, -0) || !Array.isArray(data?.["stream"])) {
-    throw new Error(`seed ${type} at index ${index} has invalid settlement fields`);
-  }
-}
-var allowedAdapterKeys = /* @__PURE__ */ new Set(["reasoningEffort", "maxTokens"]);
-function assertAdapterDefaults(value, config2, index) {
-  if (value === void 0) return;
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error(`seed request/header at index ${index} has invalid adapterDefaults`);
-  }
-  const defaults = value;
-  if (Object.keys(defaults).some((key) => !allowedAdapterKeys.has(key)) || Object.values(defaults).some((marker) => marker !== true) || defaults["reasoningEffort"] === true && config2["reasoningEffort"] === void 0 || defaults["maxTokens"] === true && config2["maxTokens"] === void 0) {
-    throw new Error(`seed request/header at index ${index} has invalid adapterDefaults`);
-  }
-}
-function isMessageEventType(type) {
-  return type === "developer/message" || type === "system/message" || type === "user/message" || type === "assistant/message" || type === "tool/result";
-}
-var MESSAGE_ROLE_BY_TYPE = {
-  "system/message": "system",
-  "developer/message": "developer",
-  "user/message": "user",
-  "assistant/message": "assistant",
-  "tool/result": "tool"
-};
-function assertMessageEventShape(event, subject) {
-  const type = event["type"];
-  if (!isMessageEventType(type)) return;
-  const data = event["data"];
-  const record2 = typeof data === "object" && data !== null ? data : void 0;
-  const message = type === "user/message" ? record2 : record2?.["message"];
-  if (typeof message !== "object" || message === null || typeof message["id"] !== "string" || message["id"] === "") {
-    throw new Error(`${subject} lacks an identified message`);
-  }
-  const messageRecord = message;
-  const expectedRole = MESSAGE_ROLE_BY_TYPE[type];
-  if (messageRecord["role"] !== expectedRole) {
-    throw new Error(`${subject} message must have role "${expectedRole}"`);
-  }
-  const source = messageRecord["source"];
-  if (typeof source !== "object" || source === null || typeof source["kind"] !== "string" || source["kind"] === "") {
-    throw new Error(`${subject} message has invalid source`);
-  }
-  if (!Array.isArray(messageRecord["content"])) {
-    throw new Error(`${subject} message has invalid content`);
-  }
-  const sourceRecord = source;
-  if (type === "system/message") {
-    if (sourceRecord["kind"] !== "system-prompt") {
-      throw new Error(`${subject} message must have system-prompt source`);
-    }
-    return;
-  }
-  if (type === "assistant/message") {
-    if (sourceRecord["kind"] !== "model" || !hasProviderModel(sourceRecord)) {
-      throw new Error(`${subject} message must have model source`);
-    }
-    return;
-  }
-  if (type !== "tool/result") return;
-  if (sourceRecord["kind"] !== "tool" || typeof sourceRecord["callId"] !== "string" || sourceRecord["callId"] === "") {
-    throw new Error(`${subject} message must have tool source`);
-  }
-  if (messageRecord["toolCallId"] !== sourceRecord["callId"]) {
-    throw new Error(`${subject} message has mismatched tool call ids`);
-  }
-}
-function hasProviderModel(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const pair = value;
-  return typeof pair["provider"] === "string" && pair["provider"].length > 0 && typeof pair["model"] === "string" && pair["model"].length > 0;
-}
-function collectSessionCallbacks(ctx, args2) {
-  return [...ctx.events.dispatch("emit", args2)];
-}
-function invokeContainedSessionObservers(ctx, name2, id, args2, callbacks) {
-  for (const callback of callbacks) {
-    try {
-      const returned = callback(...args2);
-      void Promise.resolve(returned).catch((error62) => {
-        ctx.logger.warn(`session "${id}": ${name2} listener rejected: ${String(error62)}`);
-      });
-    } catch (error62) {
-      ctx.logger.warn(`session "${id}": ${name2} listener threw: ${String(error62)}`);
-    }
-  }
-}
-var attachments = /* @__PURE__ */ new WeakMap();
-var PLUGIN_RECORD_TYPE = /^plugin:[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/u;
-function isPluginRecordType(type) {
-  return PLUGIN_RECORD_TYPE.test(type);
-}
-function assertPluginRecordEvent(value) {
-  const { type } = value;
-  if (!isPluginRecordType(type)) {
-    throw new Error(`plugin record type "${type}" must be "plugin:" followed by lowercase slash-separated segments`);
-  }
-}
-var commitPluginRecord;
-function snapshotAppend(type, data, opts, subject) {
-  const surfaceOp = opts?.surfaceOp;
-  const sourceEventSeqs = opts?.sourceEventSeqs;
-  const dataSnapshot = snapshotJsonValue(data);
-  if (dataSnapshot === void 0) throw new Error(`${subject} carries non-JSON-serializable data`);
-  const surface = snapshotJsonValue({
-    ...sourceEventSeqs === void 0 ? {} : { sourceEventSeqs },
-    ...surfaceOp === void 0 ? {} : { surfaceOp }
-  });
-  if (surface === void 0) throw new Error(`${subject} carries non-JSON-serializable surface metadata`);
-  return { type, data: dataSnapshot, surface };
-}
-function createAppendEvent(snapshot2, seq) {
-  const { type, data, surface } = snapshot2;
-  const event = deepFreeze({ type, seq, time: Date.now(), data, ...surface });
-  validateSessionEventData(event, `session event "${type}" at seq ${seq}`);
-  return event;
-}
-var Session = class _Session {
-  log = [];
-  batchPublication;
-  /** Single incremental owner of surface acceptance and projection state. */
-  surfaceManager;
-  /** The ordered surface over this session's event log. */
-  get surface() {
-    return this.surfaceManager;
-  }
-  /**
-   * Detached, deep-frozen creation metadata (format version, cwd, lineage,
-   * and whether fork history exists). Supplied by the store via `ctx.sessions.create()`. When a
-   * `Session` is created without a store-owned header, a minimal header is
-   * synthesized (stamped with the current {@link SESSION_FORMAT_VERSION}) so
-   * `session.header` is always present. Kept out of the event log — it is a
-   * storage concern, not replayable conversation state.
-   */
-  header;
-  /** Number of leading events inherited from this Session's fork parent. */
-  inheritedEventCount;
-  /** The session identity, derived from its durable header's single copy. */
-  get id() {
-    return this.header.id;
-  }
-  /**
-   * The constructor seed length (0 without one), before any marker appended
-   * during construction. Seed events never publish on `session/event`. A
-   * marker appended before the store attaches occupies this seq without
-   * publishing either; otherwise this seq is available for the next append.
-   *
-   * This in-process offset is not persisted. A fork seed can already contain
-   * the child's inherited marker and synthetic closers, so its child-owned
-   * history starts at {@link inheritedEventCount}, before this offset. A
-   * resumed Session's seed contains its full stored log, while its inherited
-   * count keeps the durable fork cut. Consumers needing complete canonical
-   * history start at seq 0.
-   */
-  firstLiveSeq;
-  /**
-   * First event produced for this object lifecycle. A new fork includes its
-   * child-owned seed marker and closers; a restored Session starts after its
-   * complete stored prefix. This in-process capture offset is not persisted.
-   */
-  firstLifecycleSeq;
-  /**
-   * Create a detached session by validating and snapshotting borrowed seed
-   * events and storage metadata.
-   * @param id - session identity.
-   * @param seed - optional borrowed replay or fork events.
-   * @param header - optional borrowed storage metadata.
-   * @param inheritedEventCount - exact fork-inherited prefix length for a seeded header.
-   * @param projections - pure interpreters for plugin-owned message changes.
-   * @returns a detached session.
-   * @throws when a seed event requires a missing message interpreter or fails validation.
-   */
-  static create(id, seed, header, inheritedEventCount, projections) {
-    return new _Session(id, seed, header, "snapshot", inheritedEventCount, projections);
-  }
-  /**
-   * Restore a detached session by adopting an independently owned or deeply frozen seed.
-   * Runtime-required event fields, event envelopes, sequence continuity, surface
-   * transitions, and header fields are validated without copying or freezing events.
-   * Embedded Assistant streams remain opaque until a stream consumer or storage
-   * verifier reads them.
-   * @param id - restored session identity.
-   * @param seed - independently owned or deeply frozen events.
-   * @param header - independently owned storage metadata.
-   * @param inheritedEventCount - exact fork-inherited prefix length decoded from storage.
-   * @param eventState - aliasing state carried from the operation that produced the seed.
-   * @param projections - pure interpreters for plugin-owned message changes.
-   * @returns a restored detached session.
-   * @throws when a seed event requires a missing message interpreter or fails validation.
-   */
-  static fromRestore(id, seed, header, inheritedEventCount, eventState, projections) {
-    return new _Session(
-      id,
-      seed,
-      header,
-      eventState,
-      inheritedEventCount,
-      projections
-    );
-  }
-  constructor(id, seed, header, mode = "snapshot", suppliedInheritedEventCount, projections = []) {
-    this.surfaceManager = new SurfaceManager(this.log, SessionLogOffset(0), projections);
-    const restoredHeader = mode === "snapshot" ? void 0 : validateRestoredSessionHeader(id, header);
-    if (seed !== void 0) {
-      for (const [index, source] of seed.entries()) {
-        const snapshot2 = mode === "snapshot" ? snapshotJsonValue(source) : source;
-        if (snapshot2 === void 0) {
-          throw new Error(`seed event at index ${index} is not losslessly JSON-serializable`);
-        }
-        assertSessionEventEnvelope(snapshot2, index);
-        if (snapshot2.seq !== index) {
-          throw new Error(`seed event at index ${index} has seq ${snapshot2.seq} (expected ${index}); seed must be contiguous from 0`);
-        }
-        try {
-          this.surfaceManager.validateNext(snapshot2);
-        } catch (error62) {
-          throw new Error(`invalid seed event at index ${index}: ${error62 instanceof Error ? error62.message : "invalid surface metadata"}`);
-        }
-        this.log.push(mode === "snapshot" ? deepFreeze(snapshot2) : snapshot2);
-      }
-    }
-    this.firstLiveSeq = SessionLogOffset(this.log.length);
-    this.header = restoredHeader ?? snapshotSessionHeader(id, header);
-    if (this.header.isSeeded && seed === void 0) {
-      throw new Error("seeded session requires an explicit constructor seed");
-    }
-    if (this.header.isSeeded && suppliedInheritedEventCount === void 0) {
-      throw new Error("seeded session requires an inherited event count");
-    }
-    const inheritedEventCount = SessionLogOffset(suppliedInheritedEventCount ?? 0);
-    if (!this.header.isSeeded && inheritedEventCount !== 0) {
-      throw new Error("unseeded session inherited event count must be 0");
-    }
-    if (inheritedEventCount > this.log.length) {
-      throw new Error("session inherited event count exceeds its event log");
-    }
-    const seedMarker = this.log[inheritedEventCount];
-    const markedSeed = seedMarker?.type === "session/end-seed" && seedMarker.data.inherited === true;
-    if (mode === "snapshot" && this.header.isSeeded && inheritedEventCount !== this.log.length && !markedSeed) {
-      throw new Error("seeded session constructor seed must equal its inherited prefix or mark its inherited cut");
-    }
-    if (markedSeed && this.log.slice(inheritedEventCount + 1).some((event) => event.type === "session/end-seed" && event.data.inherited === true)) {
-      throw new Error("session inherited event count must identify the final inherited marker");
-    }
-    this.inheritedEventCount = inheritedEventCount;
-    this.firstLifecycleSeq = mode === "snapshot" && this.header.isSeeded ? inheritedEventCount : this.firstLiveSeq;
-    if (seed !== void 0 && mode === "snapshot" && this.header.isSeeded && !markedSeed) {
-      this.append("session/end-seed", { inherited: true });
-    } else if (seed !== void 0 && !(mode === "snapshot" && this.header.isSeeded) && this.log.at(-1)?.type !== "session/end-seed") {
-      this.append("session/end-seed", {});
-    }
-  }
-  /** Cached immutable full snapshot of the private append-only log. */
-  eventsSnapshot;
-  /**
-   * Return the immutable event stored at one exact sequence number.
-   * @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
-   * See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
-   * @param seq - event sequence number.
-   * @returns the accepted event, or undefined when the log does not contain it.
-   */
-  eventAt(seq) {
-    return this.log[seq];
-  }
-  /**
-   * Materialize an immutable snapshot of a half-open event sequence range.
-   * A full current snapshot is reused until the next append; every previously
-   * returned snapshot remains stable after later appends.
-   * @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
-   * See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
-   * @param fromSeq - non-negative inclusive sequence number; defaults to the log start.
-   * @param toSeqExclusive - non-negative exclusive sequence number; defaults to the current end.
-   * @returns a frozen array of the selected deeply frozen events.
-   */
-  snapshotEvents(fromSeq = SessionLogOffset(0), toSeqExclusive = this.seq) {
-    if (fromSeq === 0 && toSeqExclusive === this.log.length) {
-      this.eventsSnapshot ??= Object.freeze([...this.log]);
-      return this.eventsSnapshot;
-    }
-    return Object.freeze(this.log.slice(fromSeq, toSeqExclusive));
-  }
-  /**
-   * Return this Session's events after its fork-inherited prefix.
-   * @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
-   * See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
-   * @returns a fresh array containing child-owned events in log order.
-   */
-  ownEvents() {
-    return this.snapshotEvents(this.inheritedEventCount);
-  }
-  /**
-   * Whether one existing event position is outside the fork-inherited prefix.
-   * @param seq - event position in this Session.
-   * @returns true when the event belongs to this Session rather than its parent.
-   */
-  isOwnSeq(seq) {
-    return seq >= this.inheritedEventCount && seq < this.seq;
-  }
-  /** The next event's sequence number — always the log length (the `seq = log.length` contiguity contract). */
-  get seq() {
-    return SessionLogOffset(this.log.length);
-  }
-  /** Current event while synchronously notifying a batch's observers. */
-  get currentBatchPublication() {
-    return this.batchPublication;
-  }
-  append(type, data, ...opts) {
-    if (typeof type !== "string") return this.#appendEvents(type);
-    this.publicationEntry();
-    const snapshot2 = snapshotAppend(type, data, opts[0], `session event "${type}"`);
-    const entry = this.publicationEntry();
-    const event = createAppendEvent(snapshot2, SessionSeq(this.log.length));
-    this.commit(event, entry);
-    return event;
-  }
-  /**
-   * Validate and publish consecutive events together. Observers see the complete log.
-   * @param inputs - event payloads and surface intents in commit order.
-   * @returns immutable committed events in the same order.
-   * @throws before changing the log if any candidate or synchronous dispatch validation fails.
-   */
-  #appendEvents(inputs) {
-    this.publicationEntry();
-    if (inputs.length === 0) return [];
-    const snapshots = Array.from({ length: inputs.length }, (_, index) => {
-      const input2 = inputs.at(index);
-      if (input2 === void 0) throw new Error(`session batch has an empty member at index ${index}`);
-      const [type, data, surfaceOpts] = input2;
-      return snapshotAppend(type, data, surfaceOpts, `session batch member ${index} ("${type}")`);
-    });
-    const entry = this.publicationEntry();
-    const startSeq = this.log.length;
-    const events = snapshots.map((snapshot2, index) => createAppendEvent(snapshot2, SessionSeq(startSeq + index)));
-    const acceptSurface = this.surfaceManager.prepareBatch(events);
-    if (entry !== void 0) entry.appending = true;
-    try {
-      const publications = entry === void 0 ? [] : events.map((event) => {
-        const args2 = [this, event];
-        const callbacks = collectSessionCallbacks(entry.emitCtx, [entry.carrier, "session/event", ...args2]);
-        return { event, args: args2, callbacks };
-      });
-      for (const event of events) this.log.push(event);
-      this.eventsSnapshot = void 0;
-      acceptSurface();
-      if (entry !== void 0) {
-        for (const { event, args: args2, callbacks } of publications) {
-          this.batchPublication = event;
-          invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, args2, callbacks);
-        }
-      }
-    } finally {
-      this.batchPublication = void 0;
-      if (entry !== void 0) {
-        entry.appending = false;
-        if (entry.detachRequested) entry.detach();
-      }
-    }
-    return events;
-  }
-  static {
-    commitPluginRecord = (session, type, data) => session.#appendRecord(type, data);
-  }
-  /**
-   * Commit one plugin record; {@link appendPluginRecord} is the only caller.
-   * @param type - record type, checked against the plugin record grammar.
-   * @param data - JSON payload, snapshotted before it enters the log.
-   * @returns the record's sequence number.
-   */
-  #appendRecord(type, data) {
-    this.publicationEntry();
-    const dataSnapshot = snapshotJsonValue(data);
-    if (dataSnapshot === void 0) {
-      throw new Error(`plugin record "${type}" carries non-JSON-serializable data`);
-    }
-    const entry = this.publicationEntry();
-    const record2 = deepFreeze({
-      type,
-      seq: SessionSeq(this.log.length),
-      time: Date.now(),
-      data: dataSnapshot,
-      ignorable: true
-    });
-    assertPluginRecordEvent(record2);
-    this.commit(record2, entry);
-    return record2.seq;
-  }
-  /**
-   * Require announced membership for store-owned Sessions and refuse reentrant publication.
-   * @returns the current store attachment, or undefined for an independent Session.
-   */
-  publicationEntry() {
-    const entry = attachments.get(this);
-    if (entry === null) {
-      throw new Error(`session "${this.id}" cannot append outside a SessionStore`);
-    }
-    if (entry !== void 0 && entry.announcement !== "complete") {
-      throw new Error(`session "${this.id}" cannot append before session/created completes`);
-    }
-    if (entry?.appending) {
-      throw new Error("session append cannot reenter while another append is being published");
-    }
-    return entry;
-  }
-  /**
-   * Accept one frozen candidate at the next sequence number, enter it into the
-   * log, and notify `session/event` observers with per-listener containment.
-   * @param event - the candidate built at the current log length.
-   * @param entry - the attachment read before the candidate was built.
-   */
-  commit(event, entry) {
-    this.surfaceManager.validateNext(event);
-    if (entry !== void 0) entry.appending = true;
-    try {
-      const callbackArgs = [this, event];
-      const callbacks = entry === void 0 ? void 0 : collectSessionCallbacks(entry.emitCtx, [entry.carrier, "session/event", ...callbackArgs]);
-      this.log.push(event);
-      this.eventsSnapshot = void 0;
-      if (entry !== void 0 && callbacks !== void 0) {
-        invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, callbackArgs, callbacks);
-      }
-    } finally {
-      if (entry !== void 0) {
-        entry.appending = false;
-        if (entry.detachRequested && entry.announcement !== "dispatching") entry.detach();
-      }
-    }
-  }
-  /** Cached fold of the request-header events — see {@link requestHeader}. */
-  headerFold;
-  /** Log position (events consumed) the header fold has reached. */
-  headerFoldSeq = 0;
-  /**
-   * The {@link EpochHeader} in force after the log's last header event — the
-   * header the NEXT request will be compared against — or undefined before
-   * the first `request/header` snapshot. The live, incrementally-maintained
-   * form of `foldRequestHeader(session.snapshotEvents())`: each header event is folded
-   * once, when first seen, so a per-step read costs O(new events).
-   * @returns the folded header, or undefined when no header event exists yet.
-   */
-  requestHeader() {
-    if (this.headerFoldSeq < this.log.length) {
-      this.headerFold = deepFreeze(foldRequestHeader(this.log.slice(this.headerFoldSeq), this.headerFold));
-      this.headerFoldSeq = this.log.length;
-    }
-    return this.headerFold;
-  }
-  /** Cached fold of `request/context` events. */
-  contextFold;
-  contextFoldSeq = 0;
-  /**
-   * Return the latest resolved route metadata, or `undefined` before the first
-   * `request/context` event. Each event is folded once.
-   * @returns the latest immutable route metadata.
-   */
-  requestContext() {
-    if (this.contextFoldSeq < this.log.length) {
-      for (const event of this.log.slice(this.contextFoldSeq)) {
-        if (event.type === "request/context") this.contextFold = deepFreeze({ ...event.data });
-      }
-      this.contextFoldSeq = this.log.length;
-    }
-    return this.contextFold;
-  }
-  /** Cached historical tool definitions and updates for request projection. */
-  toolHistoryProjection = new ToolHistoryProjection();
-  /** Index of the next committed event not yet consumed by the tool-history fold. */
-  toolHistorySeq = 0;
-  /**
-   * Fold unseen committed events into capability-independent tool history.
-   * Initial access reconstructs inherited history; later reads consume only new events.
-   * @returns an immutable snapshot for LLM request projection, including historical addition definitions.
-   */
-  toolHistory() {
-    for (const event of this.log.slice(this.toolHistorySeq)) this.toolHistoryProjection.apply(event);
-    this.toolHistorySeq = this.log.length;
-    return this.toolHistoryProjection.snapshot();
-  }
-  /** The derived-message cache: frozen projections, extended per unseen node. */
-  derived = [];
-  /** Surface position (nodes projected) the cache has reached. */
-  derivedNodes = 0;
-  /** {@link SurfaceManager.contentGeneration} the cache was built under. */
-  derivedGeneration = 0;
-  /**
-   * Derive the LLM message history by walking the ordered sequences of
-   * message-producing events maintained by `surfaceOp` markers. The
-   * surface is the single source of derived history: every message-producing
-   * append records its `surfaceOp`, so a raw event with no marker (a chunk, a
-   * turn boundary) is correctly absent, and a compaction `replace` deletes the
-   * shadowed nodes from the derivation. The projection rules are
-   * {@link deriveEventMessage}, with logged message projections applied
-   * without changing node membership or message identity.
-   *
-   * CACHED: pure tail growth costs O(new nodes); a replacement or message projection
-   * ({@link SessionSurface.contentGeneration}) rebuilds. The returned array is
-   * a fresh snapshot per call (later appends never grow an array a caller
-   * already holds); the `Message` objects in it are SHARED and **deep-frozen**.
-   * Unchanged content reuses frozen event data; projected blocks are frozen
-   * derived copies. Consumers cannot mutate the log through either form.
-   * @returns a fresh array of the shared, frozen derived history.
-   */
-  deriveMessages() {
-    const surface = this.surface;
-    const nodes = surface.nodes;
-    const generation = surface.contentGeneration;
-    if (generation !== this.derivedGeneration) {
-      this.derived = [];
-      this.derivedNodes = 0;
-      this.derivedGeneration = generation;
-    }
-    for (const seq of nodes.slice(this.derivedNodes)) {
-      const msg = this.deriveEventMessage(this.log[seq]);
-      if (msg) this.derived.push(msg);
-    }
-    this.derivedNodes = nodes.length;
-    return [...this.derived];
-  }
-  /**
-   * Project one event with all committed message projections applied.
-   * The original durable event remains unchanged.
-   * @param event - the event to project.
-   * @returns the derived message, or null when the event produces none.
-   */
-  deriveEventMessage(event) {
-    return this.surfaceManager.deriveEventMessage(event);
-  }
-};
-var SUMMARY_OPEN_TAG = "<compacted-summary>";
-var SUMMARY_CLOSE_TAG = "</compacted-summary>";
-var COMPACTION_INSTRUCTION = [
-  "You are now acting as a compaction engine for this AI coding assistant. Condense the conversation ABOVE into a structured checkpoint that lets another model resume the work with no loss of essential context.",
-  "",
-  'Output EXACTLY the Markdown structure below: keep every section, in order. Use terse bullets, not prose paragraphs. Write "(none)" for an empty section \u2014 never drop a section.',
-  "",
-  "## Primary Request and Intent",
-  "- [the user's original and evolving goals; quote verbatim where the exact wording matters]",
-  "",
-  "## Key Technical Concepts",
-  "- [technologies, frameworks, patterns, and conventions in play]",
-  "",
-  "## Files and Code",
-  "- [exact path: why it matters, key changes or snippets]",
-  "",
-  "## Errors and Fixes",
-  "- [error: how it was resolved, plus any related user feedback]",
-  "",
-  "## Pending Jobs",
-  "- [explicitly requested work not yet completed]",
-  "",
-  "## Current Work",
-  "- [precisely what was in progress at this checkpoint]",
-  "",
-  "## Next Step",
-  '- [the single next action, directly in line with the most recent request, or "(none)"]',
-  "",
-  "## Critical Context",
-  "- [decisions and their rationale, constraints, user preferences, open questions, data needed to continue]",
-  "",
-  "Rules:",
-  "- Write concise English engineering prose. Preserve exact file paths, commands, error strings, identifiers, numeric values, function signatures, and syntax fragments.",
-  "- Capture user feedback and explicit instructions faithfully, especially corrections.",
-  "- Do NOT mention this summarization request or that the context was compacted.",
-  "- Output only the checkpoint text: do not call any tool or take any other action.",
-  `- If the conversation already contains a ${SUMMARY_OPEN_TAG} block, it is a PRIOR checkpoint. Do not copy it forward verbatim: preserve still-true facts, drop stale ones, and merge newer information into a single consolidated summary under the same structure.`
-].join("\n");
-var CHECKPOINT_PREAMBLE = "This is an automatically generated checkpoint condensing an earlier span of the conversation to free up context. Treat the captured context as established background and build on it without restating it. Continue the task directly from the messages that follow, without acknowledging this checkpoint.";
-async function summarizeWithLlm(ctx, config2, input2, agent, signal) {
-  const latest = agent.session.requestHeader()?.config;
-  const configured = config2.summarizationProvider.length === 0 ? void 0 : { provider: config2.summarizationProvider, model: config2.summarizationModel };
-  const agentTarget = agent.options.provider !== void 0 && agent.options.provider.length > 0 && agent.options.model !== void 0 && agent.options.model.length > 0 ? { provider: agent.options.provider, model: agent.options.model } : void 0;
-  const target = configured ?? latest ?? agentTarget;
-  if (target === void 0) {
-    throw new Error(
-      "no provider/model available for summarization: set both BasicCompactionConfig summarization fields, route one request, or set both AgentOptions fields"
-    );
-  }
-  const assembler = new BlockAssembler();
-  const messages = [
-    ...input2.messages,
-    deepFreeze({
-      role: "user",
-      content: [{ type: "text", text: COMPACTION_INSTRUCTION }]
-    })
-  ];
-  const options = {
-    provider: target.provider,
-    model: target.model,
-    messages,
-    toolHistory: agent.session.toolHistory(),
-    ...input2.tools === void 0 ? {} : { tools: [...input2.tools] },
-    maxTokens: config2.maxTokens,
-    sessionId: agent.session.id,
-    purpose: "compaction",
-    ...signal === void 0 ? {} : { signal }
-  };
-  for await (const chunk of ctx.llm.stream(options)) assembler.push(chunk);
-  const error62 = finishError(assembler.finish);
-  if (error62 !== void 0) throw error62;
-  const rawOutput = assembler.blocks();
-  const summary = summaryText(rawOutput);
-  if (!summary.some((block) => block.text.trim().length > 0)) {
-    throw new Error("summarization produced no text summary content");
-  }
-  return {
-    summary,
-    rawOutput,
-    llmStreamCall: true,
-    provider: options.provider,
-    model: options.model,
-    maxTokens: config2.maxTokens,
-    ...assembler.usage === void 0 ? {} : { usage: assembler.usage }
-  };
-}
-function frameSummary(summary) {
-  return [
-    { type: "text", text: `${CHECKPOINT_PREAMBLE}
-
-${SUMMARY_OPEN_TAG}` },
-    ...summary,
-    { type: "text", text: SUMMARY_CLOSE_TAG }
-  ];
-}
-function finishError(finish) {
-  switch (finish.kind) {
-    case "error":
-    case "aborted": {
-      return LlmError.fromFailure(finish.failure);
-    }
-    case "max-tokens": {
-      const error62 = new Error("summarization truncated at the token cap (incomplete checkpoint)");
-      error62.code = "MAX_TOKENS";
-      return error62;
-    }
-    default:
-      return void 0;
-  }
-}
-function summaryText(blocks) {
-  if (contentHasImage(blocks)) {
-    throw new LlmError("compaction summary cannot contain image output", "UNSUPPORTED_CONTENT");
-  }
-  return blocks.filter((block) => block.type === "text");
-}
-var SurfaceChangedError = class extends Error {
-};
-function systemHead(session, headSeq) {
-  const head = session.eventAt(headSeq);
-  return head.type === "system/message" ? head : void 0;
-}
-function selectCompactableRange(session, measurement, retainTokens) {
-  const pricedNodes = measurement.nodes;
-  if (pricedNodes.length === 0) return null;
-  const surfaceNodes = session.surface.nodes;
-  if (surfaceNodes.length !== pricedNodes.length || surfaceNodes.some((seq, index) => seq !== pricedNodes[index]?.seq)) {
-    throw new Error("compaction: token-meter surface does not match the current session surface");
-  }
-  const firstIdx = systemHead(session, surfaceNodes[0]) === void 0 ? 0 : 1;
-  let accumulated = 0;
-  let keepFromIdx = pricedNodes.length;
-  for (let index = pricedNodes.length - 1; index >= 0; index -= 1) {
-    accumulated += pricedNodes[index].tokens;
-    keepFromIdx = index;
-    if (accumulated >= retainTokens) break;
-  }
-  if (keepFromIdx <= firstIdx) return null;
-  while (keepFromIdx > firstIdx) {
-    if (toolPairingBalancedBefore(session, surfaceNodes[keepFromIdx])) break;
-    keepFromIdx -= 1;
-  }
-  if (keepFromIdx <= firstIdx) return null;
-  const first = surfaceNodes[firstIdx];
-  const cutoff = surfaceNodes[keepFromIdx - 1];
-  return { start: first, end: cutoff };
-}
-async function compactSurfaceRegion(dependencies, session, start, end, agent, options, signal) {
-  if (options.owner === null) signal?.throwIfAborted();
-  const selection = validateSurfaceRegion(session, start, end);
-  const entryState = inspectCompactionEntryState(session);
-  assertCompactionInactive(
-    entryState.unmatchedCompactionStart,
-    entryState.latestEndSeedSeq,
-    "compaction"
-  );
-  let owner;
-  if (options.owner === null) {
-    if (entryState.openTurn !== null) {
-      throw new ManualCompactionError("busy", "manual compaction: the session already has an open turn");
-    }
-    owner = null;
-  } else {
-    if (entryState.openTurn === null) {
-      throw new Error("compactRegion: no open turn \u2014 automatic compaction events must be enclosed in a turn");
-    }
-    owner = entryState.openTurn;
-  }
-  const compactionId = CompactionId(randomUUID4());
-  const lifecycle = {
-    compactionId,
-    ...options.sourceCommandId === void 0 ? {} : { sourceCommandId: options.sourceCommandId },
-    turn: owner
-  };
-  const startEvent = session.append("compaction/start", lifecycle);
-  const assertStable = options.stability === "whole-surface" ? assertWholeSurfaceUnchanged : assertSelectedSpanStable;
-  let failure2;
-  let flushFailure;
-  let result;
-  let closed = false;
-  let closing = false;
-  let stage = "summary";
-  try {
-    const prepared = prepareCompaction(dependencies, session, selection);
-    const summarized = await summarizeCompaction(
-      dependencies,
-      prepared,
-      agent,
-      compactionId,
-      options.sourceCommandId,
-      assertStable,
-      signal
-    );
-    if (options.owner === null) signal?.throwIfAborted();
-    assertStable(dependencies, session, summarized);
-    stage = "commit";
-    const pending = commitCompactionBody(session, startEvent, summarized);
-    closing = true;
-    const endEvent = session.append("compaction/end", lifecycle);
-    closed = true;
-    result = completeCompaction(pending, endEvent);
-  } catch (error62) {
-    failure2 = { error: error62, stage: closing ? "commit" : stage };
-    if (!closing) {
-      closing = true;
-      try {
-        session.append("compaction/end", { ...lifecycle, error: errorChain(error62) });
-        closed = true;
-      } catch (closeError) {
-        failure2 = { error: closeError, stage: "commit" };
-      }
-    }
-  }
-  if (closed && options.flush !== void 0) {
-    try {
-      await options.flush();
-    } catch (error62) {
-      flushFailure = error62;
-    }
-  }
-  if (options.owner === null) signal?.throwIfAborted();
-  if (failure2 !== void 0) {
-    if (options.owner === null) throwManualFailure(failure2);
-    throw failure2.error;
-  }
-  if (flushFailure !== void 0) {
-    throw new ManualCompactionError(
-      "persistence",
-      "manual compaction durability checkpoint failed",
-      { cause: flushFailure }
-    );
-  }
-  if (result === void 0) throw new Error("compaction committed without a result");
-  return result;
-}
-function throwManualFailure(failure2) {
-  if (failure2.stage === "commit") {
-    throw new ManualCompactionError(
-      "commit",
-      "manual compaction did not commit cleanly",
-      { cause: failure2.error }
-    );
-  }
-  if (failure2.error instanceof SurfaceChangedError) {
-    throw new ManualCompactionError(
-      "changed",
-      "the compacted history changed during manual compaction",
-      { cause: failure2.error }
-    );
-  }
-  throw new ManualCompactionError(
-    "summary",
-    "manual compaction could not produce a smaller summary",
-    { cause: failure2.error }
-  );
-}
-function assertCompactionInactive(unmatchedCompactionStart, latestEndSeedSeq, stage) {
-  if (unmatchedCompactionStart === void 0 || latestEndSeedSeq !== void 0 && latestEndSeedSeq > unmatchedCompactionStart.seq) return;
-  throw new ManualCompactionError(
-    "busy",
-    `${stage}: compaction already in progress; the session compaction lock is already active`
-  );
-}
-function assertNoActiveCompaction(session, stage) {
-  const entryState = inspectCompactionEntryState(session);
-  assertCompactionInactive(
-    entryState.unmatchedCompactionStart,
-    entryState.latestEndSeedSeq,
-    stage
-  );
-}
-function validateSurfaceRegion(session, start, end) {
-  const nodes = session.surface.nodes;
-  const startIdx = nodes.indexOf(start);
-  const endIdx = nodes.indexOf(end);
-  if (startIdx === -1) throw new Error(`compactRegion: start seq ${start} not found in surface`);
-  if (endIdx === -1) throw new Error(`compactRegion: end seq ${end} not found in surface`);
-  if (startIdx > endIdx) {
-    throw new Error(
-      `compactRegion: start seq ${start} (position ${startIdx}) is after end seq ${end} (position ${endIdx}) on the surface`
-    );
-  }
-  if (!toolPairingBalancedBefore(session, nodes[startIdx])) {
-    throw new Error(`compactRegion: start seq ${start} is not a balanced boundary (would split a step's tool-call/result pair)`);
-  }
-  if (!toolPairingBalancedAfter(session, nodes[endIdx])) {
-    throw new Error(`compactRegion: end seq ${end} is not a balanced boundary (would split a step, or the step is still open)`);
-  }
-  return { start, end, startIdx, endIdx, shadowedSeqs: nodes.slice(startIdx, endIdx + 1) };
-}
-function prepareCompaction(dependencies, session, selection) {
-  const measurement = dependencies.meter.measure(session);
-  const selectedNodes = measurement.nodes.slice(selection.startIdx, selection.endIdx + 1);
-  if (selectedNodes.length !== selection.shadowedSeqs.length || selectedNodes.some((node2, index) => node2.seq !== selection.shadowedSeqs[index])) {
-    throw new SurfaceChangedError("compaction: selected surface changed before summarization began");
-  }
-  return {
-    ...selection,
-    measurement,
-    selectedNodes,
-    // The shadow-price protocol prices replacements with the fixed heuristic
-    // so the O(1) projection fold stays in agreement with its own appends;
-    // retention, range selection, and the shrink comparison read the
-    // route-priced `tokens` instead.
-    shadowedTokenCount: selectedNodes.reduce((total, node2) => total + node2.heuristicTokens, 0),
-    shadowedRouteTokenCount: selectedNodes.reduce((total, node2) => total + node2.tokens, 0),
-    input: buildSummarizationInput(session, selection.shadowedSeqs)
-  };
-}
-async function summarizeCompaction(dependencies, prepared, agent, compactionId, sourceCommandId, assertStable, signal) {
-  let summaryResult;
-  for (; ; ) {
-    signal?.throwIfAborted();
-    try {
-      summaryResult = await dependencies.summarize(prepared.input, agent, signal);
-      break;
-    } catch (error62) {
-      if (signal?.aborted === true) throw error62;
-      assertStable(dependencies, agent.session, prepared);
-      if (!dependencies.recover(error62, agent, prepared.shadowedSeqs, signal)) throw error62;
-      prepared = prepareCompaction(
-        dependencies,
-        agent.session,
-        validateSurfaceRegion(agent.session, prepared.start, prepared.end)
-      );
-    }
-  }
-  const checkpointMessage = createUserMessage({
-    content: frameSummary(summaryResult.summary),
-    source: compactCheckpointSource(compactionId, sourceCommandId)
-  });
-  const framedSummaryTokenCount = dependencies.meter.estimateMessage(checkpointMessage);
-  if (framedSummaryTokenCount >= prepared.shadowedRouteTokenCount) {
-    throw new Error(
-      `summary is not smaller than the shadowed content (${framedSummaryTokenCount} estimated framed tokens >= ${prepared.shadowedRouteTokenCount})`
-    );
-  }
-  return {
-    ...prepared,
-    ...summaryResult,
-    checkpointMessage
-  };
-}
-function assertWholeSurfaceUnchanged(dependencies, session, prepared) {
-  const current = dependencies.meter.measure(session);
-  if (!isDeepStrictEqual(current.nodes, prepared.measurement.nodes)) {
-    throw new SurfaceChangedError("compaction: session surface changed during summarization");
-  }
-}
-function assertSelectedSpanStable(dependencies, session, prepared) {
-  let current;
-  try {
-    current = validateSurfaceRegion(session, prepared.start, prepared.end);
-  } catch (error62) {
-    throw new SurfaceChangedError(
-      "compaction: the selected span is no longer a valid replacement target",
-      { cause: error62 }
-    );
-  }
-  if (!isDeepStrictEqual([...current.shadowedSeqs], [...prepared.shadowedSeqs])) {
-    throw new SurfaceChangedError("compaction: the selected span changed during summarization");
-  }
-  const measured = dependencies.meter.measure(session).nodes.slice(current.startIdx, current.endIdx + 1);
-  if (!isDeepStrictEqual(measured, prepared.selectedNodes)) {
-    throw new SurfaceChangedError("compaction: the selected span was rewritten during summarization");
-  }
-}
-function commitCompactionBody(session, startEvent, summarized) {
-  const {
-    start,
-    end,
-    shadowedSeqs,
-    shadowedTokenCount,
-    summary,
-    provider,
-    model,
-    maxTokens,
-    usage,
-    checkpointMessage
-  } = summarized;
-  const callRecord = summarized.llmStreamCall === true ? { rawOutput: summarized.rawOutput, llmStreamCall: true } : summarized.rawOutput === void 0 ? {} : { rawOutput: summarized.rawOutput };
-  const summaryEvent = session.append("compaction/summary", {
-    compactionId: startEvent.data.compactionId,
-    ...startEvent.data.sourceCommandId === void 0 ? {} : { sourceCommandId: startEvent.data.sourceCommandId },
-    summary,
-    ...callRecord,
-    shadowedRange: { start, end },
-    shadowedSeqs: [...shadowedSeqs],
-    shadowedTokenCount,
-    provider,
-    model,
-    ...maxTokens === void 0 ? {} : { maxTokens },
-    ...usage === void 0 ? {} : { usage }
-  });
-  session.append("user/message", checkpointMessage, {
-    surfaceOp: { op: "replace", startSeq: start, endSeq: end },
-    sourceEventSeqs: [startEvent.seq, summaryEvent.seq, ...shadowedSeqs]
-  });
-  return {
-    compactionId: startEvent.data.compactionId,
-    ...startEvent.data.sourceCommandId === void 0 ? {} : { sourceCommandId: startEvent.data.sourceCommandId },
-    startSeq: startEvent.seq,
-    summarySeq: summaryEvent.seq,
-    summary,
-    shadowedRange: { start, end },
-    shadowedSeqs: [...shadowedSeqs],
-    shadowedTokenCount
-  };
-}
-function completeCompaction(pending, endEvent) {
-  return { ...pending, endSeq: endEvent.seq };
-}
-function buildSummarizationInput(session, shadowedSeqs) {
-  const header = session.requestHeader();
-  const head = systemHead(session, session.surface.nodes[0]);
-  const system = head === void 0 ? null : session.deriveEventMessage(head);
-  const regionMessages = shadowedSeqs.map((seq) => session.deriveEventMessage(session.eventAt(seq))).filter((message) => message !== null);
-  return {
-    ...header?.tools === void 0 ? {} : { tools: header.tools },
-    messages: system === null ? regionMessages : [system, ...regionMessages]
-  };
-}
-function inspectCompactionEntryState(session) {
-  let openTurn = null;
-  let openTurnStateKnown = false;
-  let unmatchedCompactionStart;
-  let compactionEntryStateKnown = false;
-  let latestEndSeedSeq;
-  for (let seq = session.seq - 1; seq >= 0; seq -= 1) {
-    const event = session.eventAt(SessionSeq(seq));
-    if (latestEndSeedSeq === void 0 && event.type === "session/end-seed") {
-      latestEndSeedSeq = event.seq;
-    }
-    if (!compactionEntryStateKnown) {
-      if (event.type === "compaction/start") {
-        unmatchedCompactionStart = event;
-        compactionEntryStateKnown = true;
-      } else if (event.type === "compaction/end") {
-        compactionEntryStateKnown = true;
-      }
-    }
-    if (!openTurnStateKnown) {
-      if (event.type === "turn/start") {
-        openTurn = event.data.turn;
-        openTurnStateKnown = true;
-      } else if (event.type === "turn/end") {
-        openTurnStateKnown = true;
-      }
-    }
-    if (openTurnStateKnown && compactionEntryStateKnown && latestEndSeedSeq !== void 0) break;
-  }
-  return { openTurn, unmatchedCompactionStart, latestEndSeedSeq };
-}
-function routedTarget(session) {
-  const config2 = session.requestHeader()?.config;
-  if (config2 === void 0 || config2.provider.length === 0 || config2.model.length === 0) {
-    return void 0;
-  }
-  return { provider: config2.provider, model: config2.model };
-}
-function reservedCompletionTokens(header, defaultMaxTokens) {
-  return header.config.maxTokens ?? defaultMaxTokens ?? 0;
-}
-function conversationTarget(agent) {
-  const routed = routedTarget(agent.session);
-  if (routed !== void 0) return routed;
-  if (agent.options.provider === void 0 || agent.options.provider.length === 0 || agent.options.model === void 0 || agent.options.model.length === 0) return void 0;
-  return { provider: agent.options.provider, model: agent.options.model };
-}
-var thresholdRatioSchema = src_default.number();
-var headroomTokensSchema = src_default.number().step(1).min(0);
-var retainRatioSchema = src_default.number();
-var retainTokensSchema = src_default.number().step(1).min(0);
-var summarizationProviderSchema = src_default.string();
-var summarizationModelSchema = src_default.string();
-var maxTokensSchema = src_default.number().step(1).min(1);
-var compactionRetriesSchema = src_default.number().step(1).min(0);
-var maxOverflowRetriesSchema = src_default.number().step(1).min(0);
-var modelPolicy = src_default.object({
-  provider: src_default.string().required(),
-  model: src_default.string().required(),
-  thresholdRatio: thresholdRatioSchema,
-  headroomTokens: headroomTokensSchema,
-  retainRatio: retainRatioSchema,
-  retainTokens: retainTokensSchema,
-  summarizationProvider: summarizationProviderSchema,
-  summarizationModel: summarizationModelSchema,
-  maxTokens: maxTokensSchema,
-  compactionRetries: compactionRetriesSchema,
-  maxOverflowRetries: maxOverflowRetriesSchema
-});
-var BasicCompactionEngine = class extends CompactionEngine {
-  static inject = ["llm", "tokenMeter", "sessions"];
-  static Config = src_default.object({
-    thresholdRatio: thresholdRatioSchema,
-    headroomTokens: headroomTokensSchema,
-    retainRatio: retainRatioSchema,
-    retainTokens: retainTokensSchema,
-    summarizationProvider: summarizationProviderSchema,
-    summarizationModel: summarizationModelSchema,
-    maxTokens: maxTokensSchema,
-    compactionRetries: compactionRetriesSchema,
-    maxOverflowRetries: maxOverflowRetriesSchema,
-    modelPolicies: src_default.array(modelPolicy),
-    auto: src_default.boolean()
-  });
-  /** Resolved and validated compaction configuration. */
-  config;
-  warnedPressureConfigTargets = /* @__PURE__ */ new Set();
-  overflowRetries = /* @__PURE__ */ new WeakMap();
-  overflowAgents = /* @__PURE__ */ new WeakMap();
-  constructor(ctx, config2 = {}) {
-    super(ctx);
-    this.config = resolveConfig2(config2);
-    if (this.config.auto) this._registerAutomaticCompaction();
-  }
-  /**
-   * Register between-step pressure, model-switch pressure, and request-overflow
-   * recovery. Pre-step and overflow listeners dispatch through `compactIfNeeded`;
-   * model switches price the proposed header directly. All summaries use `summarize`.
-   */
-  _registerAutomaticCompaction() {
-    const { ctx } = this;
-    const logResult = (result, trigger) => {
-      ctx.logger.info(
-        `compaction (${trigger}): shadowed ${result.shadowedSeqs.length} surface nodes (seqs ${result.shadowedRange.start}-${result.shadowedRange.end}, ~${result.shadowedTokenCount} tokens)`
-      );
-    };
-    ctx.on("agent/pre-step", async ({ agent, signal }, next) => {
-      if (!signal.aborted) {
-        try {
-          const result = await this.compactIfNeeded(agent, "pressure", signal);
-          if (result !== null) logResult(result, "step pressure");
-        } catch (error62) {
-          if (error62 instanceof TargetPressureConfigError) {
-            if (this.warnedPressureConfigTargets.has(error62.targetKey)) return next();
-            this.warnedPressureConfigTargets.add(error62.targetKey);
-          }
-          const message = error62 instanceof Error ? error62.message : String(error62);
-          ctx.logger.warn(`step compaction failed: ${message}; continuing the turn`);
-        }
-      }
-      return next();
-    });
-    ctx.on("agent/status", ({ agent, status }) => {
-      if (status === "idle") this.overflowRetries.delete(agent);
-    });
-    ctx.on("agent/request", async ({ agent, signal }, next) => {
-      const config2 = await next();
-      const previous = agent.session.requestHeader();
-      if (signal.aborted || previous === void 0 || config2.provider === "" || config2.model === "" || previous.config.provider === config2.provider && previous.config.model === config2.model) return config2;
-      try {
-        const header = { ...previous, config: config2 };
-        const result = await this.compactPressure(agent, header, signal, true);
-        if (result !== null) logResult(result, "model switch");
-      } catch (error62) {
-        signal.throwIfAborted();
-        const message = error62 instanceof Error ? error62.message : String(error62);
-        throw new LlmError(
-          `Cannot switch to ${config2.provider}/${config2.model}: context compaction failed: ${message}. The previous request model is preserved; retry or select a model with a larger context window.`,
-          "MODEL_SWITCH_COMPACTION_FAILED",
-          { cause: error62 }
-        );
-      }
-      return config2;
-    }, { prepend: true });
-    ctx.on("session/event", (session, event) => {
-      if (event.type !== "assistant/message") return;
-      const agent = this.overflowAgents.get(session);
-      if (agent !== void 0) this.overflowRetries.delete(agent);
-    });
-    ctx.on("agent/request-error", async ({ agent, failure: failure2, signal }, next) => {
-      if (failure2.code !== CONTEXT_WINDOW_EXCEEDED_CODE || signal.aborted) return next();
-      this.overflowAgents.set(agent.session, agent);
-      const target = routedTarget(agent.session);
-      if (target === void 0) return next();
-      const policy = resolveTargetPolicy(this.config, target);
-      const retries = this.overflowRetries.get(agent) ?? 0;
-      if (retries >= policy.maxOverflowRetries) return next();
-      const generation = agent.session.surface.replaceGeneration;
-      let result;
-      try {
-        result = await this.compactIfNeeded(agent, "context-overflow", signal);
-      } catch (recoveryError) {
-        const message = recoveryError instanceof Error ? recoveryError.message : String(recoveryError);
-        if (!signal.aborted && agent.session.surface.replaceGeneration > generation) {
-          ctx.logger.warn(
-            `context-overflow compaction failed after durable surface progress: ${message}; retrying from the replacement surface`
-          );
-          this.overflowRetries.set(agent, retries + 1);
-          return { kind: "retry" };
-        }
-        ctx.logger.warn(
-          // oxlint-disable-next-line typescript/no-unnecessary-condition -- the signal can abort while recovery is awaited.
-          `context-overflow compaction failed: ${message}; ${signal.aborted ? "cancellation prevents retry" : "preserving the original request error"}`
-        );
-        return next();
-      }
-      if (signal.aborted || agent.session.surface.replaceGeneration <= generation) return next();
-      if (result !== null) logResult(result, "context overflow recovery");
-      this.overflowRetries.set(agent, retries + 1);
-      return { kind: "retry" };
-    });
-  }
-  /**
-   * Summarize the replayed conversation region through a direct one-shot
-   * `ctx.llm.stream()` call whose prefix reuses the conversation's own system
-   * prompt, tools, and messages so the provider's KV cache is not invalidated.
-   * Override this sole hook for a template or remote summarizer.
-   * @param input - replayed conversation prefix (system, tools, and leading messages) to condense.
-   * @param agent - supplies routed-model history, fallback model, and session id.
-   * @param signal - optional cancellation forwarded to the adapter.
-   * @returns safe text summary blocks and the exact auxiliary call envelope and output.
-   */
-  async summarize(input2, agent, signal) {
-    const target = conversationTarget(agent);
-    const config2 = target === void 0 ? this.config : resolveTargetPolicy(this.config, target);
-    return summarizeWithLlm(this.ctx, config2, input2, agent, signal);
-  }
-  /**
-   * Compact for replayed step-boundary pressure or one provider-confirmed context
-   * overflow. Both triggers price the latest durable routed request envelope;
-   * overflow bypasses the normal threshold and retained-tail policy so it can
-   * force one useful balanced reduction.
-   * @param agent - agent whose latest durable routed request is measured.
-   * @param trigger - normal step-boundary pressure or context-overflow recovery.
-   * @param signal - live turn cancellation signal forwarded to summarization.
-   * @returns the latest summary compaction result, or `null` when no summary ran.
-   */
-  async compactIfNeeded(agent, trigger, signal) {
-    const header = agent.session.requestHeader();
-    if (header === void 0 || routedTarget(agent.session) === void 0) return null;
-    switch (trigger) {
-      case "pressure":
-        return this.compactPressure(agent, header, signal, false);
-      case "context-overflow": {
-        this.ctx.get("toolResultPruner")?.pruneSession(agent.session);
-        const measurement = this.ctx.tokenMeter.measure(agent.session);
-        const range = selectCompactableRange(agent.session, measurement, 0);
-        if (range === null) return null;
-        return this.compactRegion(range.start, range.end, agent, signal);
-      }
-      /* v8 ignore next -- closed-union exhaustiveness guard */
-      default:
-        assertNever(trigger, "compaction trigger");
-    }
-  }
-  /** Price the proposed header; switch checks require history below its threshold. */
-  async compactPressure(agent, header, signal, requireBelowThreshold) {
-    const target = header.config;
-    const policy = resolveTargetPolicy(this.config, target);
-    const meter = this.ctx.tokenMeter;
-    let measurement = meter.measure(agent.session, header);
-    const prune = this.ctx.get("toolResultPruner");
-    const info = await this.ctx.llm.resolveModelInfo(target.provider, target.model, signal);
-    assertNoActiveCompaction(agent.session, "automatic pressure compaction");
-    const targetKey = `${target.provider}/${target.model}`;
-    if (info.context === void 0) {
-      throw new TargetPressureConfigError(
-        targetKey,
-        `compaction-basic: no context capacity for ${targetKey}; configure contextWindow on that adapter model`
-      );
-    }
-    const spec = resolveCompactSpec(
-      policy,
-      info.context.contextWindow,
-      reservedCompletionTokens(header, info.defaultMaxTokens)
-    );
-    if (measurement.totalTokens < spec.thresholdTokens) return null;
-    if (prune !== void 0) {
-      prune.pruneSession(agent.session);
-      measurement = meter.measure(agent.session, header);
-    }
-    if (measurement.totalTokens < spec.thresholdTokens) return null;
-    let result = null;
-    for (let attempt = 0; attempt <= spec.compactionRetries; attempt += 1) {
-      const range = selectCompactableRange(agent.session, measurement, spec.retainTokens);
-      if (range === null) {
-        if (result === null && !requireBelowThreshold) return null;
-        throw new Error(
-          `no safe compaction range can reduce context below threshold (${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`
-        );
-      }
-      result = await this.compactRegion(range.start, range.end, agent, signal);
-      measurement = meter.measure(agent.session, header);
-      if (measurement.totalTokens < spec.thresholdTokens) return result;
-    }
-    throw new Error(
-      `compaction still above threshold after ${spec.compactionRetries + 1} compaction attempts (${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`
-    );
-  }
-  /**
-   * Compact one inclusive positional range from the agent-owned surface using
-   * the effective token meter for all retention and shrink pricing.
-   * @param start - inclusive first surface-node seq.
-   * @param end - inclusive last surface-node seq.
-   * @param agent - owner of the target session, used by the summarizer.
-   * @param signal - optional summarization cancellation signal.
-   * @returns the successful durable compaction result.
-   */
-  async compactRegion(start, end, agent, signal) {
-    return compactSurfaceRegion(
-      this.regionDependencies(),
-      agent.session,
-      start,
-      end,
-      agent,
-      { owner: "current-turn", stability: "whole-surface" },
-      signal
-    );
-  }
-  /**
-   * Force one useful idle-session compaction below the pressure threshold, and
-   * resolve only after its standalone marker pair is durably checkpointed.
-   * @param agent - idle agent whose next-turn admission this call reserves.
-   * @param signal - cancellation scoped to this compaction request.
-   * @param sourceCommandId - initiating command identity for presentation correlation.
-   * @returns the committed result, or `null` when no safe useful range exists.
-   */
-  compactNow(agent, signal, sourceCommandId) {
-    signal.throwIfAborted();
-    try {
-      return agent.runMaintenance(async (agentSignal) => {
-        const operationSignal = AbortSignal.any([agentSignal, signal]);
-        try {
-          operationSignal.throwIfAborted();
-          const range = selectCompactableRange(
-            agent.session,
-            this.ctx.tokenMeter.measure(agent.session),
-            0
-          );
-          if (range === null) return null;
-          return await compactSurfaceRegion(
-            this.regionDependencies(),
-            agent.session,
-            range.start,
-            range.end,
-            agent,
-            {
-              owner: null,
-              stability: "selected-span",
-              ...sourceCommandId === void 0 ? {} : { sourceCommandId },
-              flush: async () => {
-                await this.ctx.sessions.flush(agent.session);
-              }
-            },
-            operationSignal
-          );
-        } catch (error62) {
-          if (agentSignal.aborted && operationSignal.reason === agentSignal.reason) {
-            throw new ManualCompactionError(
-              "cancelled",
-              "manual compaction was cancelled",
-              { cause: error62 }
-            );
-          }
-          operationSignal.throwIfAborted();
-          throw error62;
-        }
-      });
-    } catch (error62) {
-      throw new ManualCompactionError(
-        "busy",
-        "manual compaction requires an idle agent with no waking queued work",
-        { cause: error62 }
-      );
-    }
-  }
-  /** Bind the effective token meter and dynamically dispatched summarizer hook. */
-  regionDependencies() {
-    return {
-      meter: this.ctx.tokenMeter,
-      summarize: (input2, owner, abort) => this.summarize(input2, owner, abort),
-      recover: (error62, agent, sourceEventSeqs, signal) => this.ctx.waterfall("compaction/summary-error", {
-        session: agent.session,
-        sourceEventSeqs,
-        error: error62,
-        ...signal === void 0 ? {} : { signal }
-      }, () => false)
-    };
-  }
-};
-var PRUNE_MARKER = "\n\n[... tool result middle pruned ...]\n\n";
-var DEFAULTS = deepFreeze({
-  thresholdChars: 8192,
-  headChars: 4096,
-  tailChars: 1024
-});
-var CONFIG_KEYS = /* @__PURE__ */ new Set([
-  "thresholdChars",
-  "headChars",
-  "tailChars"
-]);
-function codePointLength(text) {
-  return Array.from(text).length;
-}
-function resolveConfig3(config2 = {}) {
-  for (const key of Object.keys(config2)) {
-    if (!CONFIG_KEYS.has(key)) {
-      throw new Error(
-        `ToolResultPruneConfig: unknown key "${key}" (allowed: thresholdChars, headChars, tailChars)`
-      );
-    }
-  }
-  const resolved = {
-    thresholdChars: config2.thresholdChars ?? DEFAULTS.thresholdChars,
-    headChars: config2.headChars ?? DEFAULTS.headChars,
-    tailChars: config2.tailChars ?? DEFAULTS.tailChars
-  };
-  assertPositiveInteger2("thresholdChars", resolved.thresholdChars);
-  assertNonNegativeInteger2("headChars", resolved.headChars);
-  assertNonNegativeInteger2("tailChars", resolved.tailChars);
-  const emittedChars = resolved.headChars + codePointLength(PRUNE_MARKER) + resolved.tailChars;
-  if (emittedChars > resolved.thresholdChars) {
-    throw new Error(
-      `ToolResultPruneConfig: headChars + marker + tailChars (${emittedChars}) must be at most thresholdChars (${resolved.thresholdChars})`
-    );
-  }
-  return deepFreeze(structuredClone(resolved));
-}
-function assertPositiveInteger2(name2, value) {
-  if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`ToolResultPruneConfig: ${name2} (${value}) must be a positive integer`);
-  }
-}
-function assertNonNegativeInteger2(name2, value) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`ToolResultPruneConfig: ${name2} (${value}) must be a non-negative integer`);
-  }
-}
-var ToolResultPruner = class extends Service {
-  // The token meter prices each shadowed node for its logged shadow-price
-  // event, so pruning genuinely requires the pricing capability.
-  static inject = ["tokenMeter"];
-  static Config = src_default.object({
-    thresholdChars: src_default.number().step(1).min(1).default(DEFAULTS.thresholdChars),
-    headChars: src_default.number().step(1).min(0).default(DEFAULTS.headChars),
-    tailChars: src_default.number().step(1).min(0).default(DEFAULTS.tailChars)
-  });
-  /** Resolved and immutable character budgets. */
-  config;
-  constructor(ctx, config2 = {}) {
-    super(ctx, "toolResultPruner");
-    this.config = resolveConfig3(config2);
-  }
-  /**
-   * Measure text content in Unicode code points; non-text blocks cost zero.
-   * @param blocks - tool-result content to measure.
-   * @returns total Unicode code points across text blocks.
-   */
-  measureContent(blocks) {
-    let chars = 0;
-    for (const block of blocks) {
-      if (block.type === "text") chars += codePointLength(block.text);
-    }
-    return chars;
-  }
-  /**
-   * Replace an over-budget text middle while retaining rich-block order.
-   * Text slicing is by Unicode code point, not UTF-16 code unit, so a retained
-   * boundary cannot split a surrogate pair. Grapheme clusters may still split.
-   * @param blocks - original tool-result content.
-   * @returns pruned content, or `null` when the text is within budget.
-   */
-  pruneContent(blocks) {
-    const totalChars = this.measureContent(blocks);
-    if (totalChars <= this.config.thresholdChars) return null;
-    const removedStart = this.config.headChars;
-    const removedEnd = totalChars - this.config.tailChars;
-    const pruned = [];
-    let consumed = 0;
-    let markerInserted = false;
-    for (const block of blocks) {
-      if (block.type !== "text") {
-        pruned.push(block);
-        continue;
-      }
-      const points = Array.from(block.text);
-      const blockStart = consumed;
-      const blockEnd = blockStart + points.length;
-      const headEnd = Math.min(points.length, Math.max(0, removedStart - blockStart));
-      const tailStart = Math.min(points.length, Math.max(0, removedEnd - blockStart));
-      const intersectsRemoved = blockStart < removedEnd && blockEnd > removedStart;
-      const marker = intersectsRemoved && !markerInserted ? PRUNE_MARKER : "";
-      if (marker.length > 0) markerInserted = true;
-      const text = points.slice(0, headEnd).join("") + marker + points.slice(tailStart).join("");
-      if (text.length > 0) pruned.push({ ...block, text });
-      consumed = blockEnd;
-    }
-    if (!markerInserted) throw new Error("tool-result prune: failed to locate the removed text span");
-    const charsAfter = this.measureContent(pruned);
-    if (charsAfter > this.config.thresholdChars || charsAfter >= totalChars) {
-      throw new Error("tool-result prune: replacement must be smaller and within threshold");
-    }
-    return pruned;
-  }
-  /**
-   * Prune every over-budget tool result from one stable current-surface snapshot.
-   * Each replacement preserves the complete event data except for `content`,
-   * cites the shadowed node so replay can recover the replacement input, and is
-   * immediately preceded by a `compaction/prune` shadow-price event pricing the
-   * shadowed node through the injected token meter, so pure consumers can
-   * subtract it without per-node state.
-   * @param session - session whose current surface is rewritten.
-   * @returns landed replacements and aggregate Unicode-code-point savings.
-   * @throws when the session rejects a replacement; replacements committed
-   * earlier in the pass remain durable.
-   */
-  pruneSession(session) {
-    const candidates = [];
-    for (const seq of [...session.surface.nodes]) {
-      const event = session.eventAt(seq);
-      if (event?.type === "tool/result") candidates.push({ seq, event });
-    }
-    const pruned = [];
-    let charsRemoved = 0;
-    for (const { seq, event } of candidates) {
-      const original = session.deriveEventMessage(event);
-      const content = this.pruneContent(original.content);
-      if (content === null) continue;
-      const charsBefore = this.measureContent(original.content);
-      const charsAfter = this.measureContent(content);
-      const message = freezeMessage({
-        ...original,
-        content
-      });
-      session.append("compaction/prune", {
-        shadowedRange: { start: seq, end: seq },
-        shadowedSeqs: [seq],
-        shadowedTokenCount: this.ctx.tokenMeter.estimateMessage(original)
-      });
-      const replacement = session.append("tool/result", {
-        ...event.data,
-        message
-      }, {
-        surfaceOp: { op: "replace", startSeq: seq, endSeq: seq },
-        sourceEventSeqs: [seq]
-      });
-      pruned.push({
-        originalSeq: seq,
-        replacementSeq: replacement.seq,
-        callId: event.data.message.source.callId,
-        charsBefore,
-        charsAfter
-      });
-      charsRemoved += charsBefore - charsAfter;
-    }
-    return { pruned, charsRemoved };
   }
 };
 var external_exports = {};
@@ -9743,7 +7339,7 @@ __export(util_exports, {
   cleanRegex: () => cleanRegex,
   clone: () => clone2,
   cloneDef: () => cloneDef,
-  codePointLength: () => codePointLength2,
+  codePointLength: () => codePointLength,
   constantCatch: () => constantCatch,
   createTransparentProxy: () => createTransparentProxy,
   defineLazy: () => defineLazy,
@@ -10362,7 +7958,7 @@ function getSizableOrigin(input2) {
   return "unknown";
 }
 var highSurrogate = /[\uD800-\uDBFF]/;
-function codePointLength2(str) {
+function codePointLength(str) {
   const units = str.length;
   if (!highSurrogate.test(str))
     return units;
@@ -11456,7 +9052,7 @@ var $ZodCheckMaxLength = /* @__PURE__ */ $constructor("$ZodCheckMaxLength", (ins
   inst._zod.check = (payload) => {
     const input2 = payload.value;
     const units = input2.length;
-    const length = typeof input2 === "string" && units > def.maximum ? codePointLength2(input2) : units;
+    const length = typeof input2 === "string" && units > def.maximum ? codePointLength(input2) : units;
     if (length <= def.maximum)
       return;
     const origin = getLengthableOrigin(input2);
@@ -11478,7 +9074,7 @@ var $ZodCheckMinLength = /* @__PURE__ */ $constructor("$ZodCheckMinLength", (ins
   inst._zod.check = (payload) => {
     const input2 = payload.value;
     const units = input2.length;
-    const length = typeof input2 === "string" && units >= def.minimum && units < def.minimum * 2 ? codePointLength2(input2) : units;
+    const length = typeof input2 === "string" && units >= def.minimum && units < def.minimum * 2 ? codePointLength(input2) : units;
     if (length >= def.minimum)
       return;
     const origin = getLengthableOrigin(input2);
@@ -11500,7 +9096,7 @@ var $ZodCheckLengthEquals = /* @__PURE__ */ $constructor("$ZodCheckLengthEquals"
   inst._zod.check = (payload) => {
     const input2 = payload.value;
     const units = input2.length;
-    const length = typeof input2 === "string" && units >= def.length && units <= def.length * 2 ? codePointLength2(input2) : units;
+    const length = typeof input2 === "string" && units >= def.length && units <= def.length * 2 ? codePointLength(input2) : units;
     if (length === def.length)
       return;
     const origin = getLengthableOrigin(input2);
@@ -14188,7 +11784,7 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack, resolve4) {
+function isRecursive(inst, stack, resolve42) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -14198,7 +11794,7 @@ function isRecursive(inst, stack, resolve4) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve4);
+      const answer = isRecursive(child, stack, resolve42);
       if (answer > result)
         result = answer;
     }
@@ -14209,7 +11805,7 @@ function isRecursive(inst, stack, resolve4) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve42) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -14273,7 +11869,7 @@ function isRecursive(inst, stack, resolve4) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve42 ? inst._zod.innerType : void 0);
       merge3(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -22205,7 +19801,7 @@ function generateChecks(doc, ctx, schema, accessor) {
   return currentAccessor;
 }
 function codePointLengthVar(doc, ctx, accessor, inDoubt) {
-  const cpLen = addConstant(ctx, codePointLength2);
+  const cpLen = addConstant(ctx, codePointLength);
   const v = newVar(ctx);
   doc.write(`const ${v} = typeof ${accessor} === "string" && ${inDoubt} ? ${cpLen}(${accessor}) : ${accessor}.length;`);
   return v;
@@ -28671,6 +26267,2594 @@ function bigint3(params) {
 function date5(params) {
   return /* @__PURE__ */ _coercedDate(ZodDate, params);
 }
+var answeredRouteProjectionDefinition = {
+  key: "compactionAnsweredRoute",
+  stateVersion: 1,
+  stateSchema: external_exports.object({ provider: external_exports.string(), model: external_exports.string() }).strict().nullable(),
+  init: () => null,
+  apply: (state, event) => {
+    if (event.type !== "assistant/message") return state;
+    const { provider, model } = event.data.message.source;
+    return state?.provider === provider && state.model === model ? state : { provider, model };
+  }
+};
+var DEFAULT_THRESHOLD_RATIO = 0.8;
+var DEFAULT_RETAIN_RATIO = 0.16;
+var POLICY_CONFIG_KEYS = [
+  "thresholdRatio",
+  "headroomTokens",
+  "retainRatio",
+  "retainTokens",
+  "summarizationProvider",
+  "summarizationModel",
+  "maxTokens",
+  "compactionRetries",
+  "maxOverflowRetries"
+];
+var BASIC_COMPACT_CONFIG_KEYS = /* @__PURE__ */ new Set([
+  ...POLICY_CONFIG_KEYS,
+  "modelPolicies",
+  "auto"
+]);
+var MODEL_POLICY_KEYS = /* @__PURE__ */ new Set([
+  "provider",
+  "model",
+  ...POLICY_CONFIG_KEYS
+]);
+var TargetPressureConfigError = class extends Error {
+  /**
+   * @param targetKey - exact provider/model route used as the warning key.
+   * @param message - actionable configuration failure detail.
+   */
+  constructor(targetKey, message) {
+    super(message);
+    this.targetKey = targetKey;
+  }
+  targetKey;
+};
+function resolveConfig2(config2 = {}) {
+  validateKeys2(config2, BASIC_COMPACT_CONFIG_KEYS, "BasicCompactionConfig");
+  validatePolicy(config2, "BasicCompactionConfig");
+  if (config2.auto !== void 0 && typeof config2.auto !== "boolean") {
+    throw new Error("BasicCompactionConfig: auto must be a boolean");
+  }
+  const headroomTokens = config2.headroomTokens ?? 65536;
+  const maxTokens = config2.maxTokens ?? headroomTokens;
+  assertPositiveInteger("BasicCompactionConfig.maxTokens (explicit or from headroomTokens)", maxTokens);
+  const thresholdRatio = config2.thresholdRatio ?? DEFAULT_THRESHOLD_RATIO;
+  const retention = resolveRetention(config2, { retainRatio: DEFAULT_RETAIN_RATIO });
+  validateRatioRetention(thresholdRatio, retention, "BasicCompactionConfig");
+  const modelPolicies = resolveModelPolicies(config2.modelPolicies);
+  for (const [index, policy] of modelPolicies.entries()) {
+    if (policy.maxTokens === void 0 && config2.maxTokens === void 0 && policy.headroomTokens !== void 0) {
+      policy.maxTokens = policy.headroomTokens;
+    }
+    assertPositiveInteger(
+      `BasicCompactionConfig: modelPolicies[${index}].maxTokens (explicit or from headroomTokens)`,
+      policy.maxTokens ?? maxTokens
+    );
+    validateRatioRetention(
+      policy.thresholdRatio ?? thresholdRatio,
+      resolveRetention(policy, retention),
+      `BasicCompactionConfig: modelPolicies[${index}]`
+    );
+  }
+  return deepFreeze({
+    thresholdRatio,
+    headroomTokens,
+    ...retention,
+    summarizationProvider: config2.summarizationProvider ?? "",
+    summarizationModel: config2.summarizationModel ?? "",
+    maxTokens,
+    compactionRetries: config2.compactionRetries ?? 1,
+    maxOverflowRetries: config2.maxOverflowRetries ?? 1,
+    modelPolicies,
+    auto: config2.auto ?? true
+  });
+}
+function resolveTargetPolicy(config2, target) {
+  const override = config2.modelPolicies.find((policy) => policy.provider === target.provider && policy.model === target.model);
+  const inheritedRetention = config2.retainTokens === void 0 ? { retainRatio: config2.retainRatio } : { retainTokens: config2.retainTokens };
+  return deepFreeze({
+    target: { provider: target.provider, model: target.model },
+    thresholdRatio: override?.thresholdRatio ?? config2.thresholdRatio,
+    headroomTokens: override?.headroomTokens ?? config2.headroomTokens,
+    ...resolveRetention(override ?? {}, inheritedRetention),
+    summarizationProvider: override?.summarizationProvider ?? config2.summarizationProvider,
+    summarizationModel: override?.summarizationModel ?? config2.summarizationModel,
+    maxTokens: override?.maxTokens ?? config2.maxTokens,
+    compactionRetries: override?.compactionRetries ?? config2.compactionRetries,
+    maxOverflowRetries: override?.maxOverflowRetries ?? config2.maxOverflowRetries
+  });
+}
+function resolveCompactSpec(policy, contextWindow, reservedCompletionTokens2) {
+  const targetKey = `${policy.target.provider}/${policy.target.model}`;
+  if (!Number.isInteger(contextWindow) || contextWindow <= 0) {
+    throw new TargetPressureConfigError(
+      targetKey,
+      `BasicCompactionConfig: contextWindow (${contextWindow}) must be a positive integer`
+    );
+  }
+  if (!Number.isInteger(reservedCompletionTokens2) || reservedCompletionTokens2 < 0) {
+    throw new TargetPressureConfigError(
+      targetKey,
+      `BasicCompactionConfig: reservedCompletionTokens (${reservedCompletionTokens2}) must be a non-negative integer`
+    );
+  }
+  const messageBudgetTokens = contextWindow - reservedCompletionTokens2;
+  if (messageBudgetTokens <= 0) {
+    throw new TargetPressureConfigError(
+      targetKey,
+      `compaction-basic: ${targetKey} reserves ${reservedCompletionTokens2} completion tokens of its ${contextWindow}-token context window, leaving no message budget; configure the adapter model's contextWindow above the effective request maxTokens`
+    );
+  }
+  const pressureBudgetTokens = messageBudgetTokens - policy.headroomTokens;
+  if (pressureBudgetTokens <= 0) {
+    throw new TargetPressureConfigError(
+      targetKey,
+      `compaction-basic: ${targetKey} reserves ${reservedCompletionTokens2} completion tokens and ${policy.headroomTokens} headroom tokens of its ${contextWindow}-token context window, leaving no pressure budget; reduce the effective request maxTokens or compaction headroomTokens, or configure a larger adapter model contextWindow`
+    );
+  }
+  const thresholdTokens = Math.floor(Math.min(
+    contextWindow * policy.thresholdRatio,
+    pressureBudgetTokens
+  ));
+  const retainTokens = policy.retainTokens === void 0 ? Math.floor(messageBudgetTokens * policy.retainRatio) : policy.retainTokens;
+  if (retainTokens >= thresholdTokens) {
+    throw new TargetPressureConfigError(
+      targetKey,
+      `BasicCompactionConfig: ${policy.target.provider}/${policy.target.model} retainTokens (${retainTokens}) must be less than threshold tokens ${thresholdTokens}`
+    );
+  }
+  return deepFreeze({
+    target: { ...policy.target },
+    contextWindow,
+    thresholdRatio: policy.thresholdRatio,
+    thresholdTokens,
+    retainTokens,
+    summarizationProvider: policy.summarizationProvider,
+    summarizationModel: policy.summarizationModel,
+    maxTokens: policy.maxTokens,
+    compactionRetries: policy.compactionRetries,
+    maxOverflowRetries: policy.maxOverflowRetries
+  });
+}
+function resolveRetention(config2, fallback) {
+  if (config2.retainTokens !== void 0) return { retainTokens: config2.retainTokens };
+  if (config2.retainRatio !== void 0) return { retainRatio: config2.retainRatio };
+  return fallback;
+}
+function validateRatioRetention(thresholdRatio, retention, name2) {
+  if (retention.retainRatio !== void 0 && retention.retainRatio >= thresholdRatio) {
+    throw new Error(
+      `${name2}: retainRatio (${retention.retainRatio}) must be less than the resolved thresholdRatio (${thresholdRatio})`
+    );
+  }
+}
+function resolveModelPolicies(configured) {
+  if (configured === void 0) return [];
+  if (!Array.isArray(configured)) {
+    throw new Error("BasicCompactionConfig: modelPolicies must be an array");
+  }
+  const seen = /* @__PURE__ */ new Set();
+  return configured.map((source, index) => {
+    const name2 = `BasicCompactionConfig: modelPolicies[${index}]`;
+    assertModelPolicy(source, name2);
+    const key = `${source.provider}\0${source.model}`;
+    if (seen.has(key)) {
+      throw new Error(
+        `BasicCompactionConfig: duplicate model policy for ${source.provider}/${source.model}`
+      );
+    }
+    seen.add(key);
+    return { ...source };
+  });
+}
+function assertModelPolicy(source, name2) {
+  if (!isUnknownRecord(source)) throw new Error(`${name2} must be an object`);
+  validateKeys2(source, MODEL_POLICY_KEYS, name2);
+  assertNonEmptyString(`${name2}.provider`, source.provider);
+  assertNonEmptyString(`${name2}.model`, source.model);
+  validatePolicy(source, name2);
+}
+function validatePolicy(config2, name2) {
+  const thresholdRatio = config2.thresholdRatio;
+  const headroomTokens = config2.headroomTokens;
+  const retainRatio = config2.retainRatio;
+  const retainTokens = config2.retainTokens;
+  const maxTokens = config2.maxTokens;
+  const compactionRetries = config2.compactionRetries;
+  const maxOverflowRetries = config2.maxOverflowRetries;
+  if (thresholdRatio !== void 0) assertRatio(`${name2}.thresholdRatio`, thresholdRatio);
+  if (headroomTokens !== void 0) assertNonNegativeInteger(`${name2}.headroomTokens`, headroomTokens);
+  if (retainRatio !== void 0) assertRatio(`${name2}.retainRatio`, retainRatio);
+  if (retainTokens !== void 0) assertNonNegativeInteger(`${name2}.retainTokens`, retainTokens);
+  if (retainRatio !== void 0 && retainTokens !== void 0) {
+    throw new Error(`${name2}: retainRatio and retainTokens are mutually exclusive`);
+  }
+  if (maxTokens !== void 0) assertPositiveInteger(`${name2}.maxTokens`, maxTokens);
+  if (compactionRetries !== void 0) {
+    assertNonNegativeInteger(`${name2}.compactionRetries`, compactionRetries);
+  }
+  if (maxOverflowRetries !== void 0) {
+    assertNonNegativeInteger(`${name2}.maxOverflowRetries`, maxOverflowRetries);
+  }
+  validateSummarizationPair(config2, name2);
+}
+function validateSummarizationPair(config2, name2) {
+  const provider = config2.summarizationProvider;
+  const model = config2.summarizationModel;
+  if (provider !== void 0 && typeof provider !== "string") {
+    throw new Error(`${name2}.summarizationProvider must be a string`);
+  }
+  if (model !== void 0 && typeof model !== "string") {
+    throw new Error(`${name2}.summarizationModel must be a string`);
+  }
+  if (provider === void 0 && model === void 0) return;
+  if (provider === void 0 || model === void 0 || provider.length === 0 !== (model.length === 0)) {
+    throw new Error(
+      `${name2}: summarizationProvider and summarizationModel must be set together as an empty or non-empty pair`
+    );
+  }
+}
+function validateKeys2(config2, keys, name2) {
+  for (const key of Object.keys(config2)) {
+    if (!keys.has(key)) throw new Error(`${name2}: unknown key "${key}"`);
+  }
+}
+function isUnknownRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function assertNonEmptyString(name2, value) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${name2} must be a non-empty string`);
+  }
+}
+function assertPositiveInteger(name2, value) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name2} (${String(value)}) must be a positive integer`);
+  }
+}
+function assertNonNegativeInteger(name2, value) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${name2} (${String(value)}) must be a non-negative integer`);
+  }
+}
+function assertRatio(name2, value) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 1) {
+    throw new Error(`${name2} (${String(value)}) must be a number in (0, 1]`);
+  }
+}
+function SessionSeq(value) {
+  if (!Number.isSafeInteger(value) || value < 0 || Object.is(value, -0)) {
+    throw new TypeError(`SessionSeq must be a non-negative safe integer, got ${String(value)}`);
+  }
+  return brandNumber(value);
+}
+function SessionLogOffset(value) {
+  if (!Number.isSafeInteger(value) || value < 0 || Object.is(value, -0)) {
+    throw new TypeError(`SessionLogOffset must be a non-negative safe integer, got ${String(value)}`);
+  }
+  return brandNumber(value);
+}
+var SESSION_FORMAT_VERSION = 4;
+var KNOWN_SESSION_EVENT_TYPES = /* @__PURE__ */ new Set([
+  "action-cards/decision",
+  "agent-preset/selected",
+  "agent/inbox/spliced",
+  "approval/asked",
+  "approval/decided",
+  "approval/policy",
+  "assistant/attempt",
+  "assistant/message",
+  "command/done",
+  "command/run",
+  "compaction/end",
+  "compaction/prune",
+  "compaction/start",
+  "compaction/summary",
+  "deliverables/presented",
+  "developer/message",
+  "feedback/message-delete",
+  "feedback/message-put",
+  "feedback/record",
+  "goal/change",
+  "hook/invoked",
+  "hook/result",
+  "image/offload",
+  "job/registered",
+  "job/settled",
+  "llm/retry",
+  "llm/retry-started",
+  "model/selection",
+  "permission/preset",
+  "plan/mode",
+  "request/context",
+  "request/header",
+  "sandbox/mode",
+  "schedule/change",
+  "session-log-deepseek/delivery-accepted",
+  "session/end-seed",
+  "session/title",
+  "session/title-llm-request",
+  "step/end",
+  "step/start",
+  "subagent/catalog",
+  "subagent/descriptor",
+  "subagent/model-selection-policy",
+  "system/message",
+  "team/member",
+  "team/message/delivered",
+  "team/message/queued",
+  "team/mode",
+  "team/task",
+  "todo/write",
+  "tool-workflow/agent-end",
+  "tool-workflow/agent-start",
+  "tool-workflow/run-end",
+  "tool-workflow/run-start",
+  "tool/call",
+  "tool/ptc-dispatch",
+  "tool/ptc-dispatch-start",
+  "tool/result",
+  "turn/end",
+  "turn/start",
+  "user/message",
+  "web/deepseek-search-llm-request",
+  "working-directory/change",
+  "workspace-root/change",
+  "workspace/changes"
+]);
+var MESSAGE_PROJECTION_EVENT_TYPES = /* @__PURE__ */ new Set([
+  "image/offload"
+]);
+var SURFACE_EVENT_TYPES = /* @__PURE__ */ new Set([
+  "system/message",
+  "developer/message",
+  "user/message",
+  "assistant/message",
+  "tool/result"
+]);
+function isSurfaceEligibleType(type) {
+  return SURFACE_EVENT_TYPES.has(type);
+}
+function isSurfaceEvent(event) {
+  if (!SURFACE_EVENT_TYPES.has(event.type)) return false;
+  const candidate = event;
+  return candidate.surfaceOp !== void 0;
+}
+function deriveEventMessage(event, projectedMessages) {
+  const projected = projectedMessages?.get(event.seq);
+  if (projected !== void 0) return projected;
+  switch (event.type) {
+    // Ordinary prompts and injected context retain producer-owned framing.
+    // See Derived history in packages/core/session/README.md.
+    case "user/message": {
+      return event.data;
+    }
+    // Empty system and developer nodes retain their surface positions without
+    // adding wire messages. An empty assistant event hosts a max-tokens step's
+    // usage and must not inject a content-less turn into the provider transcript.
+    case "system/message":
+    case "developer/message":
+    case "assistant/message": {
+      if (event.data.message.content.length === 0) return null;
+      return event.data.message;
+    }
+    case "tool/result": {
+      return event.data.message;
+    }
+    default:
+      return null;
+  }
+}
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function validateSessionEventData(event, subject) {
+  const data = event.data;
+  if (SURFACE_EVENT_TYPES.has(event.type) && isRecord2(data)) {
+    const message = event.type === "user/message" ? data : data["message"];
+    if (isRecord2(message)) {
+      if (event.type === "developer/message" !== (message["role"] === "developer")) {
+        throw new Error(`${subject} developer/message and developer role must occur together`);
+      }
+      if (message["role"] !== "developer" && Array.isArray(message["content"]) && message["content"].some((block) => isRecord2(block) && (block["type"] === "tool-addition" || block["type"] === "tool-removal"))) {
+        throw new Error(`${subject} tool-change blocks require developer role`);
+      }
+      if (event.type === "developer/message" && Array.isArray(message["content"])) {
+        let hasAdditions = false;
+        for (const block of message["content"]) {
+          if (!isRecord2(block) || block["type"] !== "tool-addition" && block["type"] !== "tool-removal") continue;
+          if (typeof block["toolName"] !== "string" || block["toolName"].length === 0) {
+            throw new Error(`${subject} ${block["type"]} requires a nonempty toolName`);
+          }
+          if (block["type"] === "tool-addition") {
+            hasAdditions = true;
+            if (Object.hasOwn(block, "tool")) throw new Error(`${subject} tool-addition must omit inline tool definitions`);
+          }
+        }
+        if (hasAdditions ? !isEventSeq(data["headerSeq"]) : Object.hasOwn(data, "headerSeq")) {
+          throw new Error(`${subject} requires headerSeq exactly when tool additions are present`);
+        }
+      }
+    }
+  }
+  if (event.type === "request/header") {
+    if (!isRecord2(data)) throw new Error(`${subject} data must be an object`);
+    const header = data["header"];
+    if (!isRecord2(header)) throw new Error(`${subject} header must be an object`);
+    if (Object.hasOwn(header, "system")) throw new Error(`${subject} must omit header.system; use system/message`);
+    if (Array.isArray(header["tools"]) && header["tools"].length === 0) {
+      throw new Error(`${subject} must omit empty tools`);
+    }
+    const defaults = header["adapterDefaults"];
+    if (isRecord2(defaults) && Object.keys(defaults).length === 0) {
+      throw new Error(`${subject} must omit empty adapterDefaults`);
+    }
+  } else if (event.type === "tool/result") {
+    if (!isRecord2(data)) throw new Error(`${subject} data must be an object`);
+    if (data["error"] === void 0) return;
+    const message = data["message"];
+    if (!isRecord2(message) || message["isError"] !== true) {
+      throw new Error(`${subject} error requires message.isError === true`);
+    }
+  }
+}
+function createFoldState() {
+  return { nodes: [], replaceGeneration: 0, contentGeneration: 0, projectedMessages: /* @__PURE__ */ new Map(), projections: /* @__PURE__ */ new Set() };
+}
+function isEventSeq(value) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && !Object.is(value, -0);
+}
+function isReplaceOp(value) {
+  const op = value;
+  return Object.keys(op).length === 3 && Object.hasOwn(op, "op") && Object.hasOwn(op, "startSeq") && Object.hasOwn(op, "endSeq") && op["op"] === "replace" && isEventSeq(op["startSeq"]) && isEventSeq(op["endSeq"]);
+}
+function surfaceOpOf(event) {
+  const raw = event;
+  if (!isSurfaceEligibleType(event.type)) {
+    if (!KNOWN_SESSION_EVENT_TYPES.has(event.type) && event.ignorable === true) return;
+    if (raw.surfaceOp !== void 0) {
+      throw new Error(`session event "${event.type}" is not surface-eligible and cannot carry surfaceOp`);
+    }
+    if (raw.sourceEventSeqs !== void 0) {
+      throw new Error(`session event "${event.type}" is not surface-eligible and cannot carry sourceEventSeqs`);
+    }
+    return;
+  }
+  const op = raw.surfaceOp;
+  if (op === void 0) {
+    throw new Error(`session event "${event.type}" is surface-eligible and requires a surfaceOp marker`);
+  }
+  if (op === "append") return op;
+  if (op === null || typeof op !== "object" || Array.isArray(op)) {
+    throw new Error(`session event "${event.type}" carries an invalid surfaceOp`);
+  }
+  if (!isReplaceOp(op)) {
+    throw new Error(`session event "${event.type}" carries an invalid replace surfaceOp`);
+  }
+  return op;
+}
+function assertSourceEventReferences(event, shadowedSeqs) {
+  const raw = event.sourceEventSeqs;
+  if (event.type === "assistant/message" && raw !== void 0) {
+    throw new Error("assistant/message embeds its source stream and cannot carry sourceEventSeqs");
+  }
+  const sources = /* @__PURE__ */ new Set();
+  if (raw !== void 0) {
+    if (!Array.isArray(raw)) {
+      throw new Error(`sourceEventSeqs on event at seq ${event.seq} must be an array when present`);
+    }
+    if (raw.length === 0) {
+      throw new Error("sourceEventSeqs must not be empty");
+    }
+    let nonEarlierSource;
+    for (const source of raw) {
+      if (!isEventSeq(source)) {
+        throw new Error(`session event "${event.type}" sourceEventSeqs must densely contain non-negative safe integers`);
+      }
+      sources.add(source);
+      if (nonEarlierSource === void 0 && source >= event.seq) nonEarlierSource = source;
+    }
+    if (sources.size !== raw.length) {
+      throw new Error("sourceEventSeqs must not contain duplicates");
+    }
+    if (nonEarlierSource !== void 0) {
+      throw new Error(`sourceEventSeqs must reference earlier events: ${nonEarlierSource} >= current seq ${event.seq}`);
+    }
+  }
+  const missing = shadowedSeqs.filter((seq) => !sources.has(seq));
+  if (missing.length > 0) {
+    throw new Error(`surface replace: sourceEventSeqs must include every shadowed surface node; missing ${missing.join(", ")}`);
+  }
+}
+function assertDeveloperHeader(event, read) {
+  if (event.type !== "developer/message") return;
+  validateSessionEventData(event, `developer/message at seq ${event.seq}`);
+  if (event.data.headerSeq === void 0) return;
+  const headerSeq = event.data.headerSeq;
+  const headerEvent = read(headerSeq);
+  if (headerSeq >= event.seq || headerEvent?.type !== "request/header") {
+    throw new Error("developer/message headerSeq must reference an earlier request/header");
+  }
+  for (const block of event.data.message.content) {
+    if (block.type !== "tool-addition") continue;
+    const definitions = headerEvent.data.header.tools?.filter((tool) => tool.name === block.toolName) ?? [];
+    if (definitions.length !== 1) {
+      throw new Error(`developer/message tool-addition "${block.toolName}" must name exactly one tool in headerSeq ${headerSeq}`);
+    }
+    const definition = definitions[0];
+    if (typeof definition.description !== "string" || !isRecord2(definition.parameters)) {
+      throw new Error(`developer/message tool-addition "${block.toolName}" requires a complete tool definition in headerSeq ${headerSeq}`);
+    }
+    if (Object.hasOwn(definition, "deferLoading") && definition.deferLoading !== true) {
+      throw new Error("developer/message referenced tool deferLoading must be true when present");
+    }
+  }
+}
+function validateSurfaceMetadata(event) {
+  const op = surfaceOpOf(event);
+  if (op !== void 0 && op !== "append" && (op.startSeq >= event.seq || op.endSeq >= event.seq)) {
+    throw new Error(`surface replace at seq ${event.seq}: startSeq and endSeq must reference earlier events`);
+  }
+  if (op !== void 0) assertSourceEventReferences(event, []);
+  return op;
+}
+function replacementRange(state, op) {
+  const startIdx = state.nodes.indexOf(op.startSeq);
+  if (startIdx === -1) {
+    throw new Error(`surface replace: start seq ${op.startSeq} not found in surface`);
+  }
+  const endIdx = state.nodes.indexOf(op.endSeq);
+  if (endIdx === -1) {
+    throw new Error(`surface replace: end seq ${op.endSeq} not found in surface`);
+  }
+  if (startIdx > endIdx) {
+    throw new Error(`surface replace: start seq ${op.startSeq} (index ${startIdx}) is after end seq ${op.endSeq} (index ${endIdx})`);
+  }
+  return {
+    startIdx,
+    endIdx,
+    shadowedSeqs: state.nodes.slice(startIdx, endIdx + 1)
+  };
+}
+function isDeepEqualJson(a, b) {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((item, i) => isDeepEqualJson(item, b[i]));
+  }
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  const aKeys = Object.keys(a);
+  const bRecord = b;
+  if (aKeys.length !== Object.keys(b).length) return false;
+  return aKeys.every((key) => Object.hasOwn(b, key) && isDeepEqualJson(a[key], bRecord[key]));
+}
+function assertToolResultRewrite(event, shadowedSeqs, read) {
+  if (event.type !== "tool/result") return;
+  if (shadowedSeqs.length !== 1) {
+    throw new Error("tool/result surface replacement must rewrite exactly one current node");
+  }
+  for (const originalSeq of shadowedSeqs) {
+    const original = read(originalSeq);
+    if (original?.type !== "tool/result") {
+      throw new Error("tool/result surface replacement must target a current tool/result");
+    }
+    const originalRest = { ...original.data };
+    const replacementRest = { ...event.data };
+    originalRest["message"] = {
+      ...original.data.message,
+      content: null
+    };
+    replacementRest["message"] = {
+      ...event.data.message,
+      content: null
+    };
+    if (!isDeepEqualJson(originalRest, replacementRest)) {
+      throw new Error("tool/result surface replacement may change only content");
+    }
+  }
+}
+function assertSystemHeadRewrite(event, state, startIdx, shadowedSeqs, read) {
+  if (startIdx !== 0) return;
+  const head = read(state.nodes[0]);
+  if (head?.type !== "system/message") return;
+  if (event.type !== "system/message" || shadowedSeqs.length !== 1) {
+    throw new Error("surface replace: node 0 holds the system prompt and may be rewritten only by a system/message over exactly that node");
+  }
+}
+function planSurfaceEvent(state, event, expectedSeq, events, baseSeq, projections, candidates) {
+  if (event.seq !== expectedSeq) {
+    throw new Error(`session event seq ${event.seq} is not contiguous; expected ${expectedSeq}`);
+  }
+  const surfaceOp = validateSurfaceMetadata(event);
+  const read = (seq) => {
+    const index = seq - baseSeq;
+    return index < events.length ? events[index] : candidates?.[index - events.length];
+  };
+  assertDeveloperHeader(event, read);
+  const projection = projections.find((item) => item.type === event.type);
+  if (projection !== void 0) {
+    let projectionEvents;
+    return { kind: "project", projection, messages: projection.project(event, {
+      nodes: state.nodes,
+      get events() {
+        return candidates === void 0 ? events : projectionEvents ??= [...events, ...candidates];
+      },
+      baseSeq,
+      messages: state.projectedMessages
+    }) };
+  }
+  if (MESSAGE_PROJECTION_EVENT_TYPES.has(event.type)) {
+    throw new Error(`session event "${event.type}" requires a message projection; load its owning plugin or supply its projection definition`);
+  }
+  if (surfaceOp === void 0) return;
+  if (surfaceOp === "append") {
+    return { kind: "append", seq: event.seq };
+  }
+  const range = replacementRange(state, surfaceOp);
+  assertSourceEventReferences(event, range.shadowedSeqs);
+  assertToolResultRewrite(event, range.shadowedSeqs, read);
+  assertSystemHeadRewrite(event, state, range.startIdx, range.shadowedSeqs, read);
+  return {
+    kind: "replace",
+    seq: event.seq,
+    start: surfaceOp.startSeq,
+    end: surfaceOp.endSeq,
+    ...range
+  };
+}
+function applySurfaceEvent(state, event, expectedSeq, events, baseSeq, projections) {
+  const plan = planSurfaceEvent(state, event, expectedSeq, events, baseSeq, projections);
+  return applySurfacePlan(state, plan);
+}
+function applySurfacePlan(state, plan) {
+  if (plan?.kind === "append") {
+    state.nodes.push(plan.seq);
+  } else if (plan?.kind === "replace") {
+    state.nodes.splice(plan.startIdx, plan.endIdx - plan.startIdx + 1, plan.seq);
+    state.replaceGeneration += 1;
+    state.contentGeneration += 1;
+  } else if (plan?.kind === "project") {
+    for (const [seq, message] of plan.messages) state.projectedMessages.set(seq, message);
+    state.projections.add(plan.projection);
+    state.contentGeneration += 1;
+  }
+  if (plan?.kind !== "replace") return;
+  return {
+    seq: plan.seq,
+    start: plan.start,
+    end: plan.end,
+    shadowedSeqs: plan.shadowedSeqs
+  };
+}
+var SurfaceManager = class {
+  /**
+   * @param log - Contiguous complete log or loaded event window.
+   * @param baseSeq - Absolute sequence of the window's first event.
+   * @param projections - live borrowed definitions; removing a used definition invalidates further reads.
+   */
+  constructor(log, baseSeq = SessionLogOffset(0), projections = []) {
+    this.log = log;
+    this.baseSeq = baseSeq;
+    this.projections = projections;
+    this._lastProcessedSeq = baseSeq === 0 ? -1 : SessionSeq(baseSeq - 1);
+  }
+  log;
+  baseSeq;
+  projections;
+  /** Shared transition state; replacement history is not retained. */
+  _state = createFoldState();
+  /** Last processed absolute seq. */
+  _lastProcessedSeq;
+  /** Candidate already validated by `validateNext`, pending exact log admission. */
+  _pendingPlan;
+  /**
+   * Validate the next candidate without mutating the committed surface.
+   * @param event - candidate event that has not entered the log yet.
+   */
+  validateNext(event) {
+    this._assertProjections();
+    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+    const expectedSeq = SessionSeq(this.baseSeq + this.log.length);
+    this._pendingPlan = {
+      event,
+      expectedSeq,
+      plan: planSurfaceEvent(this._state, event, expectedSeq, this.log, this.baseSeq, this.projections)
+    };
+  }
+  /**
+   * Validate consecutive candidates against an isolated surface fold.
+   * @param events - candidates immediately following the committed log.
+   * @returns a callback adopting the validated fold after all candidates enter the log.
+   */
+  prepareBatch(events) {
+    this._assertProjections();
+    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+    const lastProcessedSeq = SessionSeq(this.baseSeq + this.log.length + events.length - 1);
+    if (events.every((event) => (event.surfaceOp === void 0 || event.surfaceOp === "append") && !this.projections.some((projection) => projection.type === event.type))) {
+      const plans2 = events.map((event, index) => planSurfaceEvent(
+        this._state,
+        event,
+        SessionSeq(this.baseSeq + this.log.length + index),
+        this.log,
+        this.baseSeq,
+        this.projections,
+        events
+      ));
+      return () => {
+        for (const plan of plans2) applySurfacePlan(this._state, plan);
+        this._lastProcessedSeq = lastProcessedSeq;
+        this._pendingPlan = void 0;
+      };
+    }
+    const state = {
+      ...this._state,
+      nodes: [...this._state.nodes],
+      projectedMessages: new Map(this._state.projectedMessages),
+      projections: new Set(this._state.projections)
+    };
+    const plans = events.map((event, index) => {
+      const plan = planSurfaceEvent(
+        state,
+        event,
+        SessionSeq(this.baseSeq + this.log.length + index),
+        this.log,
+        this.baseSeq,
+        this.projections,
+        events
+      );
+      applySurfacePlan(state, plan);
+      return plan;
+    });
+    return () => {
+      for (const plan of plans) applySurfacePlan(this._state, plan);
+      this._lastProcessedSeq = lastProcessedSeq;
+      this._pendingPlan = void 0;
+    };
+  }
+  /** Monotonic count of folded positional replacements. */
+  get replaceGeneration() {
+    this._assertProjections();
+    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+    return this._state.replaceGeneration;
+  }
+  /** Monotonic count of committed changes to existing model-visible content. */
+  get contentGeneration() {
+    this._assertProjections();
+    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+    return this._state.contentGeneration;
+  }
+  /**
+   * Project one message with every committed message projection applied.
+   * @param event - message-producing or log-only event.
+   * @returns its immutable projected message, or null when it produces none.
+   */
+  deriveEventMessage(event) {
+    this._assertProjections();
+    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+    return deriveEventMessage(event, this._state.projectedMessages);
+  }
+  /** Surface event sequences in model-visible order. */
+  get nodes() {
+    this._assertProjections();
+    if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+    return this._state.nodes;
+  }
+  /** System nodes in surface order, including nodes whose content array is empty; scans current nodes on each read. */
+  get systemNodes() {
+    const systems = [];
+    for (const seq of this.nodes) {
+      const event = this.log[seq - this.baseSeq];
+      if (event?.type === "system/message") systems.push({ seq, isEmpty: event.data.message.content.length === 0 });
+    }
+    return systems;
+  }
+  /** Fold events appended since the previous access. */
+  _processDelta() {
+    const tailSeq = this.baseSeq + this.log.length - 1;
+    for (let seq = this._lastProcessedSeq + 1; seq <= tailSeq; seq++) {
+      const index = seq - this.baseSeq;
+      const event = this.log[index];
+      const pending = this._pendingPlan;
+      if (pending?.event === event && pending.expectedSeq === seq) {
+        applySurfacePlan(this._state, pending.plan);
+      } else {
+        applySurfaceEvent(this._state, event, SessionSeq(seq), this.log, this.baseSeq, this.projections);
+      }
+      if (pending !== void 0 && pending.expectedSeq <= seq) this._pendingPlan = void 0;
+      this._lastProcessedSeq = SessionSeq(seq);
+    }
+  }
+  /** Cached messages cannot outlive the definitions that interpreted their log. */
+  _assertProjections() {
+    const candidate = this._pendingPlan;
+    const pending = candidate !== void 0 && this.log[candidate.expectedSeq - this.baseSeq] === candidate.event ? candidate.plan : void 0;
+    const required2 = pending?.kind === "project" ? [...this._state.projections, pending.projection] : this._state.projections;
+    for (const projection of required2) {
+      if (!this.projections.includes(projection)) {
+        throw new Error(`session message projection "${projection.type}" was removed or replaced; restore the session with its owning plugin`);
+      }
+    }
+  }
+};
+function canonicalHeader(header) {
+  const adapterDefaults = header.adapterDefaults;
+  return {
+    config: header.config,
+    ...adapterDefaults?.reasoningEffort === true || adapterDefaults?.maxTokens === true ? { adapterDefaults } : {},
+    ...header.tools !== void 0 && header.tools.length > 0 ? { tools: header.tools } : {}
+  };
+}
+function sameSchema(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+function headerEquals(a, b) {
+  if (!callConfigEquals(a.config, b.config) || a.adapterDefaults?.reasoningEffort !== b.adapterDefaults?.reasoningEffort || a.adapterDefaults?.maxTokens !== b.adapterDefaults?.maxTokens) return false;
+  const at = a.tools ?? [];
+  const bt = b.tools ?? [];
+  return at.length === bt.length && at.every((tool, i) => sameSchema(tool, bt[i]));
+}
+function foldRequestHeader(events, from2) {
+  let state = from2;
+  for (const event of events) {
+    if (event.type === "request/header") state = canonicalHeader(event.data.header);
+  }
+  return state;
+}
+var ToolHistoryProjection = class {
+  /** Historical declarations indexed by the header sequence referenced by additions. */
+  headers = /* @__PURE__ */ new Map();
+  /** Definitions retained in the current declaration series, including removed tools. */
+  declared = /* @__PURE__ */ new Map();
+  /** Active definitions from the latest request header. */
+  active = [];
+  /** Active names reconstructed from the baseline and recorded updates. */
+  available = /* @__PURE__ */ new Set();
+  /** Header that starts the current declaration series; absent before the first header. */
+  baselineSeq;
+  /** Immutable request snapshot of the current baseline and resolved updates. */
+  history = deepFreeze({ tools: [], updates: [] });
+  /**
+   * Consume the next committed event in log order.
+   * @param event - a session event, including inherited events during restoration.
+   */
+  apply(event) {
+    if (event.type === "request/header") {
+      const tools = event.data.header.tools ?? [];
+      this.headers.set(event.seq, tools);
+      const redeclared = tools.some((tool) => {
+        const before = this.declared.get(tool.name);
+        return before !== void 0 && JSON.stringify(before) !== JSON.stringify(tool);
+      });
+      if (this.baselineSeq === void 0 || event.data.reason === "series" || event.data.startsSeries || redeclared) {
+        this.baselineSeq = event.seq;
+        this.declared = new Map(tools.map((tool) => [tool.name, tool]));
+        this.history = deepFreeze({ tools, updates: [] });
+        this.available = new Set(tools.map((tool) => tool.name));
+      }
+      this.active = tools;
+    } else if (event.type === "developer/message") {
+      const { message, headerSeq } = event.data;
+      const definitions = headerSeq === void 0 ? [] : this.headers.get(headerSeq);
+      const additions = message.content.flatMap((block) => {
+        if (block.type !== "tool-addition") return [];
+        const tool = definitions?.find((tool2) => tool2.name === block.toolName);
+        if (tool === void 0) throw new Error(`tool history: missing definition for ${block.toolName}`);
+        return [tool];
+      });
+      for (const tool of additions) this.declared.set(tool.name, tool);
+      for (const block of message.content) {
+        if (block.type === "tool-addition") this.available.add(block.toolName);
+        else if (block.type === "tool-removal") this.available.delete(block.toolName);
+      }
+      this.history = deepFreeze({
+        tools: this.history.tools,
+        updates: [...this.history.updates, { messageId: message.id, additions }]
+      });
+    }
+  }
+  /**
+   * Read an immutable snapshot; subsequent events do not mutate it.
+   * @returns initial declarations and historically resolved additions for the current series.
+   */
+  snapshot() {
+    if (this.active.length !== this.available.size || this.active.some((tool) => !this.available.has(tool.name))) {
+      return deepFreeze({ tools: this.active, updates: [] });
+    }
+    return this.history;
+  }
+};
+function validateSessionHeader(id, input2) {
+  if (input2 === null || typeof input2 !== "object" || Array.isArray(input2)) {
+    throw new Error("session header is not a plain JSON record");
+  }
+  const record2 = input2;
+  if (Object.hasOwn(record2, "seedLength")) {
+    throw new Error('session header has invalid field "seedLength"');
+  }
+  if (record2.version !== SESSION_FORMAT_VERSION) {
+    throw new Error(`session header version must be ${SESSION_FORMAT_VERSION}, got ${String(record2.version)}`);
+  }
+  if (record2.id !== id) {
+    throw new Error(`session header id "${String(record2.id)}" does not match session id "${id}"`);
+  }
+  if (typeof record2.createdAt !== "number" || !Number.isSafeInteger(record2.createdAt) || record2.createdAt < 0) {
+    throw new Error("session header createdAt must be a non-negative safe integer");
+  }
+  if (record2.cwd !== void 0) {
+    if (typeof record2.cwd !== "string") throw new Error("session header cwd must be a string");
+    if (!isAbsolute(record2.cwd)) {
+      throw new Error(`session header cwd must be an absolute path, got "${record2.cwd}"`);
+    }
+  }
+  if (record2.parentSession !== void 0 && typeof record2.parentSession !== "string") {
+    throw new Error("session header parentSession must be a string");
+  }
+  if (typeof record2.isSeeded !== "boolean") {
+    throw new Error("session header isSeeded must be a boolean");
+  }
+  if (record2.origin !== void 0 && record2.origin !== "subagent") {
+    throw new Error('session header origin must be "subagent"');
+  }
+  if (record2.delegationDepth !== void 0 && (typeof record2.delegationDepth !== "number" || !Number.isSafeInteger(record2.delegationDepth) || record2.delegationDepth < 0)) {
+    throw new Error("session header delegationDepth must be a non-negative safe integer");
+  }
+  if (record2.agentPreset !== void 0 && typeof record2.agentPreset !== "string") {
+    throw new Error("session header agentPreset must be a string");
+  }
+  return deepFreeze(record2);
+}
+function validateRestoredSessionHeader(id, input2) {
+  if (input2 !== null && typeof input2 === "object" && !Array.isArray(input2)) {
+    const prototype = Reflect.getPrototypeOf(input2);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new Error("session header is not a plain JSON record");
+    }
+  }
+  return validateSessionHeader(id, input2);
+}
+function snapshotSessionHeader(id, source) {
+  const input2 = source === void 0 ? { version: SESSION_FORMAT_VERSION, id, createdAt: Date.now(), isSeeded: false } : source;
+  const snapshot2 = snapshotJsonValue(input2);
+  if (snapshot2 === void 0) throw new Error("session header is not losslessly JSON-serializable");
+  return validateSessionHeader(id, snapshot2);
+}
+function assertSessionEventEnvelope(value, index) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`seed event at index ${index} has an invalid event envelope`);
+  }
+  const event = value;
+  for (const key in event) {
+    switch (key) {
+      case "type":
+      case "seq":
+      case "time":
+      case "data":
+      case "surfaceOp":
+      case "sourceEventSeqs":
+      case "ignorable":
+        break;
+      default:
+        throw new Error(`seed event at index ${index} has an invalid event envelope`);
+    }
+  }
+  const type = event["type"];
+  const seq = event["seq"];
+  const time3 = event["time"];
+  if (typeof type !== "string" || typeof seq !== "number" || !Number.isSafeInteger(seq) || seq < 0 || Object.is(seq, -0) || typeof time3 !== "number" || !Number.isSafeInteger(time3) || event["data"] === void 0 || event["ignorable"] !== void 0 && event["ignorable"] !== true) {
+    throw new Error(`seed event at index ${index} has an invalid event envelope`);
+  }
+  validateSessionEventData(event, `seed ${type} at index ${index}`);
+  switch (type) {
+    case "request/header":
+    case "developer/message":
+    case "system/message":
+    case "user/message":
+    case "assistant/attempt":
+    case "assistant/message":
+    case "tool/result":
+      assertCurrentLlmShape(event, index);
+      break;
+  }
+}
+function assertCurrentLlmShape(event, index) {
+  const data = event["data"];
+  const record2 = typeof data === "object" && data !== null ? data : void 0;
+  if (event["type"] === "request/header") {
+    const headerRecord = record2?.["header"];
+    const config2 = headerRecord["config"];
+    if (!hasProviderModel(config2)) throw new Error(`seed request/header at index ${index} lacks provider/model`);
+    const configRecord = config2;
+    const reasoningEffort = configRecord["reasoningEffort"];
+    if (reasoningEffort !== void 0 && (typeof reasoningEffort !== "string" || reasoningEffort.length === 0)) {
+      throw new Error(`seed request/header at index ${index} has an invalid reasoningEffort`);
+    }
+    assertAdapterDefaults(headerRecord["adapterDefaults"], configRecord, index);
+    const reason = record2?.["reason"];
+    if (reason !== "initial" && reason !== "resume" && reason !== "change" && reason !== "series") {
+      throw new Error(`seed request/header at index ${index} has an invalid reason`);
+    }
+    if (record2?.["startsSeries"] !== void 0 && record2["startsSeries"] !== true) {
+      throw new Error(`seed request/header at index ${index} has an invalid startsSeries marker`);
+    }
+  }
+  const type = event["type"];
+  if (type === "assistant/attempt") {
+    assertAssistantSettlementShape(record2, type, index);
+    return;
+  }
+  if (!isMessageEventType(type)) return;
+  assertMessageEventShape(event, `seed ${type} at index ${index}`);
+  if (type === "assistant/message") {
+    assertAssistantSettlementShape(record2, type, index);
+  }
+}
+function assertAssistantSettlementShape(data, type, index) {
+  const turn = data?.["turn"];
+  const step = data?.["step"];
+  if (typeof turn !== "number" || !Number.isSafeInteger(turn) || turn < 0 || Object.is(turn, -0) || typeof step !== "number" || !Number.isSafeInteger(step) || step < 0 || Object.is(step, -0) || !Array.isArray(data?.["stream"])) {
+    throw new Error(`seed ${type} at index ${index} has invalid settlement fields`);
+  }
+}
+var allowedAdapterKeys = /* @__PURE__ */ new Set(["reasoningEffort", "maxTokens"]);
+function assertAdapterDefaults(value, config2, index) {
+  if (value === void 0) return;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`seed request/header at index ${index} has invalid adapterDefaults`);
+  }
+  const defaults = value;
+  if (Object.keys(defaults).some((key) => !allowedAdapterKeys.has(key)) || Object.values(defaults).some((marker) => marker !== true) || defaults["reasoningEffort"] === true && config2["reasoningEffort"] === void 0 || defaults["maxTokens"] === true && config2["maxTokens"] === void 0) {
+    throw new Error(`seed request/header at index ${index} has invalid adapterDefaults`);
+  }
+}
+function isMessageEventType(type) {
+  return type === "developer/message" || type === "system/message" || type === "user/message" || type === "assistant/message" || type === "tool/result";
+}
+var MESSAGE_ROLE_BY_TYPE = {
+  "system/message": "system",
+  "developer/message": "developer",
+  "user/message": "user",
+  "assistant/message": "assistant",
+  "tool/result": "tool"
+};
+function assertSystemSectionMetadata(sourceRecord, content, subject) {
+  for (const marker of ["complete", "reset"]) {
+    if (sourceRecord[marker] !== void 0 && sourceRecord[marker] !== true) {
+      throw new Error(`${subject} has invalid ${marker} system prompt marker`);
+    }
+  }
+  const sections = sourceRecord["sections"];
+  if (sections === void 0) {
+    if (sourceRecord["reset"] !== void 0) {
+      throw new Error(`${subject} requires system section attribution`);
+    }
+    return;
+  }
+  if (!Array.isArray(sections) || !Array.isArray(content) || content.some((block) => typeof block !== "object" || block === null || !("type" in block) || block.type !== "text" || !("text" in block) || typeof block.text !== "string")) {
+    throw new Error(`${subject} has invalid system section attribution`);
+  }
+  const names = /* @__PURE__ */ new Set();
+  const indices = /* @__PURE__ */ new Set();
+  const entries = sections;
+  for (const section of entries) {
+    if (typeof section !== "object" || section === null || !("name" in section) || typeof section.name !== "string" || section.name.length === 0) {
+      throw new Error(`${subject} has invalid system section attribution`);
+    }
+    if (!("state" in section) || section.state !== "active" && section.state !== "retired") {
+      throw new Error(`${subject} has invalid system section attribution`);
+    }
+    if (section.state === "active" && (!("order" in section) || typeof section.order !== "number" || !Number.isFinite(section.order))) {
+      throw new Error(`${subject} has invalid system section attribution`);
+    }
+    const contentIndex = "contentIndex" in section ? section.contentIndex : void 0;
+    if (section.state === "retired" && contentIndex !== void 0) {
+      throw new Error(`${subject} has invalid system section attribution`);
+    }
+    const references = section.state === "active" ? [contentIndex] : [];
+    const noticeIndex = "noticeIndex" in section ? section.noticeIndex : void 0;
+    if (noticeIndex !== void 0) {
+      if (!Array.isArray(noticeIndex)) throw new Error(`${subject} has invalid system section attribution`);
+      const notices = noticeIndex;
+      references.push(...notices);
+    }
+    if (names.has(section.name)) throw new Error(`${subject} has invalid system section attribution`);
+    names.add(section.name);
+    for (const index of references) {
+      if (typeof index !== "number" || !Number.isSafeInteger(index) || index < 0 || index >= content.length || indices.has(index)) {
+        throw new Error(`${subject} has invalid system section attribution`);
+      }
+      indices.add(index);
+    }
+  }
+}
+function assertMessageEventShape(event, subject) {
+  const type = event["type"];
+  if (!isMessageEventType(type)) return;
+  const data = event["data"];
+  const record2 = typeof data === "object" && data !== null ? data : void 0;
+  const message = type === "user/message" ? record2 : record2?.["message"];
+  if (typeof message !== "object" || message === null || typeof message["id"] !== "string" || message["id"] === "") {
+    throw new Error(`${subject} lacks an identified message`);
+  }
+  const messageRecord = message;
+  const expectedRole = MESSAGE_ROLE_BY_TYPE[type];
+  if (messageRecord["role"] !== expectedRole) {
+    throw new Error(`${subject} message must have role "${expectedRole}"`);
+  }
+  const source = messageRecord["source"];
+  if (typeof source !== "object" || source === null || typeof source["kind"] !== "string" || source["kind"] === "") {
+    throw new Error(`${subject} message has invalid source`);
+  }
+  if (!Array.isArray(messageRecord["content"])) {
+    throw new Error(`${subject} message has invalid content`);
+  }
+  const sourceRecord = source;
+  if (type === "system/message") {
+    if (sourceRecord["kind"] !== "system-prompt") {
+      throw new Error(`${subject} message must have system-prompt source`);
+    }
+    assertSystemSectionMetadata(sourceRecord, messageRecord["content"], subject);
+    return;
+  }
+  if (type === "assistant/message") {
+    if (sourceRecord["kind"] !== "model" || !hasProviderModel(sourceRecord)) {
+      throw new Error(`${subject} message must have model source`);
+    }
+    return;
+  }
+  if (type !== "tool/result") return;
+  if (sourceRecord["kind"] !== "tool" || typeof sourceRecord["callId"] !== "string" || sourceRecord["callId"] === "") {
+    throw new Error(`${subject} message must have tool source`);
+  }
+  if (messageRecord["toolCallId"] !== sourceRecord["callId"]) {
+    throw new Error(`${subject} message has mismatched tool call ids`);
+  }
+}
+function hasProviderModel(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const pair = value;
+  return typeof pair["provider"] === "string" && pair["provider"].length > 0 && typeof pair["model"] === "string" && pair["model"].length > 0;
+}
+function validateSeedEvent(source, index, mode) {
+  const snapshot2 = mode === "snapshot" ? snapshotJsonValue(source) : source;
+  if (snapshot2 === void 0) {
+    throw new Error(`seed event at index ${index} is not losslessly JSON-serializable`);
+  }
+  assertSessionEventEnvelope(snapshot2, index);
+  if (snapshot2.seq !== index) {
+    throw new Error(`seed event at index ${index} has seq ${snapshot2.seq} (expected ${index}); seed must be contiguous from 0`);
+  }
+  return snapshot2;
+}
+function replaySurfaceEvent(event, index, surface) {
+  try {
+    surface.validateNext(event);
+  } catch (error62) {
+    throw new Error(`invalid seed event at index ${index}: ${error62 instanceof Error ? error62.message : "invalid surface metadata"}`);
+  }
+}
+function acceptSeedEvents(seed, mode, log, surface) {
+  for (const [index, source] of seed.entries()) {
+    const snapshot2 = validateSeedEvent(source, index, mode);
+    replaySurfaceEvent(snapshot2, index, surface);
+    log.push(mode === "snapshot" ? deepFreeze(snapshot2) : snapshot2);
+  }
+}
+function isInheritedSeedMarker(event) {
+  return event?.type === "session/end-seed" && event.data.inherited === true;
+}
+function validateInheritedCut(header, hasSeed, supplied, log, mode) {
+  if (header.isSeeded && !hasSeed) {
+    throw new Error("seeded session requires an explicit constructor seed");
+  }
+  if (header.isSeeded && supplied === void 0) {
+    throw new Error("seeded session requires an inherited event count");
+  }
+  const inheritedEventCount = SessionLogOffset(supplied ?? 0);
+  if (!header.isSeeded && inheritedEventCount !== 0) {
+    throw new Error("unseeded session inherited event count must be 0");
+  }
+  if (inheritedEventCount > log.length) {
+    throw new Error("session inherited event count exceeds its event log");
+  }
+  const markedSeed = isInheritedSeedMarker(log[inheritedEventCount]);
+  if (mode === "snapshot" && header.isSeeded && inheritedEventCount !== log.length && !markedSeed) {
+    throw new Error("seeded session constructor seed must equal its inherited prefix or mark its inherited cut");
+  }
+  if (markedSeed && log.slice(inheritedEventCount + 1).some(isInheritedSeedMarker)) {
+    throw new Error("session inherited event count must identify the final inherited marker");
+  }
+  return inheritedEventCount;
+}
+function needsInheritedSeedMarker(header, events, inheritedEventCount) {
+  return header.isSeeded && !isInheritedSeedMarker(events[inheritedEventCount]);
+}
+function checkSessionLog(id, header, seed, inheritedEventCount, mode, events, surface) {
+  const restoredHeader = mode === "snapshot" ? void 0 : validateRestoredSessionHeader(id, header);
+  if (seed !== void 0) acceptSeedEvents(seed, mode, events, surface);
+  const checkedHeader = restoredHeader ?? snapshotSessionHeader(id, header);
+  return {
+    header: checkedHeader,
+    inheritedEventCount: validateInheritedCut(checkedHeader, seed !== void 0, inheritedEventCount, events, mode)
+  };
+}
+function collectSessionCallbacks(ctx, args2) {
+  return [...ctx.events.dispatch("emit", args2)];
+}
+function invokeContainedSessionObservers(ctx, name2, id, args2, callbacks) {
+  for (const callback of callbacks) {
+    try {
+      const returned = callback(...args2);
+      void Promise.resolve(returned).catch((error62) => {
+        ctx.logger.warn(`session "${id}": ${name2} listener rejected: ${String(error62)}`);
+      });
+    } catch (error62) {
+      ctx.logger.warn(`session "${id}": ${name2} listener threw: ${String(error62)}`);
+    }
+  }
+}
+var attachments = /* @__PURE__ */ new WeakMap();
+var PLUGIN_RECORD_TYPE = /^plugin:[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/u;
+function isPluginRecordType(type) {
+  return PLUGIN_RECORD_TYPE.test(type);
+}
+function assertPluginRecordEvent(value) {
+  const { type } = value;
+  if (!isPluginRecordType(type)) {
+    throw new Error(`plugin record type "${type}" must be "plugin:" followed by lowercase slash-separated segments`);
+  }
+}
+var commitPluginRecord;
+function snapshotAppend(type, data, opts, subject) {
+  const surfaceOp = opts?.surfaceOp;
+  const sourceEventSeqs = opts?.sourceEventSeqs;
+  const dataSnapshot = snapshotJsonValue(data);
+  if (dataSnapshot === void 0) throw new Error(`${subject} carries non-JSON-serializable data`);
+  const surface = snapshotJsonValue({
+    ...sourceEventSeqs === void 0 ? {} : { sourceEventSeqs },
+    ...surfaceOp === void 0 ? {} : { surfaceOp }
+  });
+  if (surface === void 0) throw new Error(`${subject} carries non-JSON-serializable surface metadata`);
+  return { type, data: dataSnapshot, surface };
+}
+function createAppendEvent(snapshot2, seq) {
+  const { type, data, surface } = snapshot2;
+  const event = deepFreeze({ type, seq, time: Date.now(), data, ...surface });
+  validateSessionEventData(event, `session event "${type}" at seq ${seq}`);
+  return event;
+}
+var Session = class _Session {
+  log = [];
+  batchPublication;
+  /** Single incremental owner of surface acceptance and projection state. */
+  surfaceManager;
+  /** The ordered surface over this session's event log. */
+  get surface() {
+    return this.surfaceManager;
+  }
+  /**
+   * Detached, deep-frozen creation metadata (format version, cwd, lineage,
+   * and whether fork history exists). Supplied by the store via `ctx.sessions.create()`. When a
+   * `Session` is created without a store-owned header, a minimal header is
+   * synthesized (stamped with the current {@link SESSION_FORMAT_VERSION}) so
+   * `session.header` is always present. Kept out of the event log — it is a
+   * storage concern, not replayable conversation state.
+   */
+  header;
+  /** Number of leading events inherited from this Session's fork parent. */
+  inheritedEventCount;
+  /** The session identity, derived from its durable header's single copy. */
+  get id() {
+    return this.header.id;
+  }
+  /**
+   * The constructor seed length (0 without one), before any marker appended
+   * during construction. Seed events never publish on `session/event`. A
+   * marker appended before the store attaches occupies this seq without
+   * publishing either; otherwise this seq is available for the next append.
+   *
+   * This in-process offset is not persisted. A fork seed can already contain
+   * the child's inherited marker and synthetic closers, so its child-owned
+   * history starts at {@link inheritedEventCount}, before this offset. A
+   * resumed Session's seed contains its full stored log, while its inherited
+   * count keeps the durable fork cut. Consumers needing complete canonical
+   * history start at seq 0.
+   */
+  firstLiveSeq;
+  /**
+   * First event produced for this object lifecycle. A new fork includes its
+   * child-owned seed marker and closers; a restored Session starts after its
+   * complete stored prefix. This in-process capture offset is not persisted.
+   */
+  firstLifecycleSeq;
+  /**
+   * Create a detached session by validating and snapshotting borrowed seed
+   * events and storage metadata.
+   * @param id - session identity.
+   * @param seed - optional borrowed replay or fork events.
+   * @param header - optional borrowed storage metadata.
+   * @param inheritedEventCount - exact fork-inherited prefix length for a seeded header.
+   * @param projections - pure interpreters for plugin-owned message changes.
+   * @returns a detached session.
+   * @throws when a seed event requires a missing message interpreter or fails validation.
+   */
+  static create(id, seed, header, inheritedEventCount, projections) {
+    return new _Session(id, seed, header, "snapshot", inheritedEventCount, projections);
+  }
+  /**
+   * Restore a detached session by adopting an independently owned or deeply frozen seed.
+   * Runtime-required event fields, event envelopes, sequence continuity, surface
+   * transitions, and header fields are validated without copying or freezing events.
+   * Embedded Assistant streams remain opaque until a stream consumer or storage
+   * verifier reads them.
+   * @param id - restored session identity.
+   * @param seed - independently owned or deeply frozen events.
+   * @param header - independently owned storage metadata.
+   * @param inheritedEventCount - exact fork-inherited prefix length decoded from storage.
+   * @param eventState - aliasing state carried from the operation that produced the seed.
+   * @param projections - pure interpreters for plugin-owned message changes.
+   * @returns a restored detached session.
+   * @throws when a seed event requires a missing message interpreter or fails validation.
+   */
+  static fromRestore(id, seed, header, inheritedEventCount, eventState, projections) {
+    return new _Session(
+      id,
+      seed,
+      header,
+      eventState,
+      inheritedEventCount,
+      projections
+    );
+  }
+  constructor(id, seed, header, mode = "snapshot", suppliedInheritedEventCount, projections = []) {
+    this.surfaceManager = new SurfaceManager(this.log, SessionLogOffset(0), projections);
+    const checked = checkSessionLog(id, header, seed, suppliedInheritedEventCount, mode, this.log, this.surfaceManager);
+    this.firstLiveSeq = SessionLogOffset(this.log.length);
+    this.header = checked.header;
+    const inheritedEventCount = checked.inheritedEventCount;
+    this.inheritedEventCount = inheritedEventCount;
+    this.firstLifecycleSeq = mode === "snapshot" && this.header.isSeeded ? inheritedEventCount : this.firstLiveSeq;
+    if (seed !== void 0 && mode === "snapshot" && needsInheritedSeedMarker(this.header, this.log, inheritedEventCount)) {
+      this.append("session/end-seed", { inherited: true });
+    } else if (seed !== void 0 && !(mode === "snapshot" && this.header.isSeeded) && this.log.at(-1)?.type !== "session/end-seed") {
+      this.append("session/end-seed", {});
+    }
+  }
+  /** Cached immutable full snapshot of the private append-only log. */
+  eventsSnapshot;
+  /**
+   * Return the immutable event stored at one exact sequence number.
+   * @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
+   * See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
+   * @param seq - event sequence number.
+   * @returns the accepted event, or undefined when the log does not contain it.
+   */
+  eventAt(seq) {
+    return this.log[seq];
+  }
+  /**
+   * Materialize an immutable snapshot of a half-open event sequence range.
+   * A full current snapshot is reused until the next append; every previously
+   * returned snapshot remains stable after later appends.
+   * @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
+   * See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
+   * @param fromSeq - non-negative inclusive sequence number; defaults to the log start.
+   * @param toSeqExclusive - non-negative exclusive sequence number; defaults to the current end.
+   * @returns a frozen array of the selected deeply frozen events.
+   */
+  snapshotEvents(fromSeq = SessionLogOffset(0), toSeqExclusive = this.seq) {
+    if (fromSeq === 0 && toSeqExclusive === this.log.length) {
+      this.eventsSnapshot ??= Object.freeze([...this.log]);
+      return this.eventsSnapshot;
+    }
+    return Object.freeze(this.log.slice(fromSeq, toSeqExclusive));
+  }
+  /**
+   * Return this Session's events after its fork-inherited prefix.
+   * @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
+   * See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
+   * @returns a fresh array containing child-owned events in log order.
+   */
+  ownEvents() {
+    return this.snapshotEvents(this.inheritedEventCount);
+  }
+  /**
+   * Whether one existing event position is outside the fork-inherited prefix.
+   * @param seq - event position in this Session.
+   * @returns true when the event belongs to this Session rather than its parent.
+   */
+  isOwnSeq(seq) {
+    return seq >= this.inheritedEventCount && seq < this.seq;
+  }
+  /** The next event's sequence number — always the log length (the `seq = log.length` contiguity contract). */
+  get seq() {
+    return SessionLogOffset(this.log.length);
+  }
+  /** Current event while synchronously notifying a batch's observers. */
+  get currentBatchPublication() {
+    return this.batchPublication;
+  }
+  append(type, data, ...opts) {
+    if (typeof type !== "string") return this.#appendEvents(type);
+    this.publicationEntry();
+    const snapshot2 = snapshotAppend(type, data, opts[0], `session event "${type}"`);
+    const entry = this.publicationEntry();
+    const event = createAppendEvent(snapshot2, SessionSeq(this.log.length));
+    this.commit(event, entry);
+    return event;
+  }
+  /**
+   * Validate and publish consecutive events together. Observers see the complete log.
+   * @param inputs - event payloads and surface intents in commit order.
+   * @returns immutable committed events in the same order.
+   * @throws before changing the log if any candidate or synchronous dispatch validation fails.
+   */
+  #appendEvents(inputs) {
+    this.publicationEntry();
+    if (inputs.length === 0) return [];
+    const snapshots = Array.from({ length: inputs.length }, (_, index) => {
+      const input2 = inputs.at(index);
+      if (input2 === void 0) throw new Error(`session batch has an empty member at index ${index}`);
+      const [type, data, surfaceOpts] = input2;
+      return snapshotAppend(type, data, surfaceOpts, `session batch member ${index} ("${type}")`);
+    });
+    const entry = this.publicationEntry();
+    const startSeq = this.log.length;
+    const events = snapshots.map((snapshot2, index) => createAppendEvent(snapshot2, SessionSeq(startSeq + index)));
+    const acceptSurface = this.surfaceManager.prepareBatch(events);
+    if (entry !== void 0) entry.appending = true;
+    try {
+      const publications = entry === void 0 ? [] : events.map((event) => {
+        const args2 = [this, event];
+        const callbacks = collectSessionCallbacks(entry.emitCtx, [entry.carrier, "session/event", ...args2]);
+        return { event, args: args2, callbacks };
+      });
+      for (const event of events) this.log.push(event);
+      this.eventsSnapshot = void 0;
+      acceptSurface();
+      if (entry !== void 0) {
+        for (const { event, args: args2, callbacks } of publications) {
+          this.batchPublication = event;
+          invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, args2, callbacks);
+        }
+      }
+    } finally {
+      this.batchPublication = void 0;
+      if (entry !== void 0) {
+        entry.appending = false;
+        if (entry.detachRequested) entry.detach();
+      }
+    }
+    return events;
+  }
+  static {
+    commitPluginRecord = (session, type, data) => session.#appendRecord(type, data);
+  }
+  /**
+   * Commit one plugin record; {@link appendPluginRecord} is the only caller.
+   * @param type - record type, checked against the plugin record grammar.
+   * @param data - JSON payload, snapshotted before it enters the log.
+   * @returns the record's sequence number.
+   */
+  #appendRecord(type, data) {
+    this.publicationEntry();
+    const dataSnapshot = snapshotJsonValue(data);
+    if (dataSnapshot === void 0) {
+      throw new Error(`plugin record "${type}" carries non-JSON-serializable data`);
+    }
+    const entry = this.publicationEntry();
+    const record2 = deepFreeze({
+      type,
+      seq: SessionSeq(this.log.length),
+      time: Date.now(),
+      data: dataSnapshot,
+      ignorable: true
+    });
+    assertPluginRecordEvent(record2);
+    this.commit(record2, entry);
+    return record2.seq;
+  }
+  /**
+   * Require announced membership for store-owned Sessions and refuse reentrant publication.
+   * @returns the current store attachment, or undefined for an independent Session.
+   */
+  publicationEntry() {
+    const entry = attachments.get(this);
+    if (entry === null) {
+      throw new Error(`session "${this.id}" cannot append outside a SessionStore`);
+    }
+    if (entry !== void 0 && entry.announcement !== "complete") {
+      throw new Error(`session "${this.id}" cannot append before session/created completes`);
+    }
+    if (entry?.appending) {
+      throw new Error("session append cannot reenter while another append is being published");
+    }
+    return entry;
+  }
+  /**
+   * Accept one frozen candidate at the next sequence number, enter it into the
+   * log, and notify `session/event` observers with per-listener containment.
+   * @param event - the candidate built at the current log length.
+   * @param entry - the attachment read before the candidate was built.
+   */
+  commit(event, entry) {
+    this.surfaceManager.validateNext(event);
+    if (entry !== void 0) entry.appending = true;
+    try {
+      const callbackArgs = [this, event];
+      const callbacks = entry === void 0 ? void 0 : collectSessionCallbacks(entry.emitCtx, [entry.carrier, "session/event", ...callbackArgs]);
+      this.log.push(event);
+      this.eventsSnapshot = void 0;
+      if (entry !== void 0 && callbacks !== void 0) {
+        invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, callbackArgs, callbacks);
+      }
+    } finally {
+      if (entry !== void 0) {
+        entry.appending = false;
+        if (entry.detachRequested && entry.announcement !== "dispatching") entry.detach();
+      }
+    }
+  }
+  /** Cached fold of the request-header events — see {@link requestHeader}. */
+  headerFold;
+  /** Log position (events consumed) the header fold has reached. */
+  headerFoldSeq = 0;
+  /**
+   * The {@link EpochHeader} in force after the log's last header event — the
+   * header the NEXT request will be compared against — or undefined before
+   * the first `request/header` snapshot. The live, incrementally-maintained
+   * form of `foldRequestHeader(session.snapshotEvents())`: each header event is folded
+   * once, when first seen, so a per-step read costs O(new events).
+   * @returns the folded header, or undefined when no header event exists yet.
+   */
+  requestHeader() {
+    if (this.headerFoldSeq < this.log.length) {
+      this.headerFold = deepFreeze(foldRequestHeader(this.log.slice(this.headerFoldSeq), this.headerFold));
+      this.headerFoldSeq = this.log.length;
+    }
+    return this.headerFold;
+  }
+  /** Cached fold of `request/context` events. */
+  contextFold;
+  contextFoldSeq = 0;
+  /**
+   * Return the latest resolved route metadata, or `undefined` before the first
+   * `request/context` event. Each event is folded once.
+   * @returns the latest immutable route metadata.
+   */
+  requestContext() {
+    if (this.contextFoldSeq < this.log.length) {
+      for (const event of this.log.slice(this.contextFoldSeq)) {
+        if (event.type === "request/context") this.contextFold = deepFreeze({ ...event.data });
+      }
+      this.contextFoldSeq = this.log.length;
+    }
+    return this.contextFold;
+  }
+  /** Cached historical tool definitions and updates for request projection. */
+  toolHistoryProjection = new ToolHistoryProjection();
+  /** Index of the next committed event not yet consumed by the tool-history fold. */
+  toolHistorySeq = 0;
+  /**
+   * Fold unseen committed events into capability-independent tool history.
+   * Initial access reconstructs inherited history; later reads consume only new events.
+   * @returns an immutable snapshot for LLM request projection, including historical addition definitions.
+   */
+  toolHistory() {
+    for (const event of this.log.slice(this.toolHistorySeq)) this.toolHistoryProjection.apply(event);
+    this.toolHistorySeq = this.log.length;
+    return this.toolHistoryProjection.snapshot();
+  }
+  /** The derived-message cache: frozen projections, extended per unseen node. */
+  derived = [];
+  /** Surface position (nodes projected) the cache has reached. */
+  derivedNodes = 0;
+  /** {@link SurfaceManager.contentGeneration} the cache was built under. */
+  derivedGeneration = 0;
+  /**
+   * Derive the LLM message history by walking the ordered sequences of
+   * message-producing events maintained by `surfaceOp` markers. The
+   * surface is the single source of derived history: every message-producing
+   * append records its `surfaceOp`, so a raw event with no marker (a chunk, a
+   * turn boundary) is correctly absent, and a compaction `replace` deletes the
+   * shadowed nodes from the derivation. The projection rules are
+   * {@link deriveEventMessage}, with logged message projections applied
+   * without changing node membership or message identity.
+   *
+   * CACHED: pure tail growth costs O(new nodes); a replacement or message projection
+   * ({@link SessionSurface.contentGeneration}) rebuilds. The returned array is
+   * a fresh snapshot per call (later appends never grow an array a caller
+   * already holds); the `Message` objects in it are SHARED and **deep-frozen**.
+   * Unchanged content reuses frozen event data; projected blocks are frozen
+   * derived copies. Consumers cannot mutate the log through either form.
+   * @returns a fresh array of the shared, frozen derived history.
+   */
+  deriveMessages() {
+    const surface = this.surface;
+    const nodes = surface.nodes;
+    const generation = surface.contentGeneration;
+    if (generation !== this.derivedGeneration) {
+      this.derived = [];
+      this.derivedNodes = 0;
+      this.derivedGeneration = generation;
+    }
+    for (const seq of nodes.slice(this.derivedNodes)) {
+      const msg = this.deriveEventMessage(this.log[seq]);
+      if (msg) this.derived.push(msg);
+    }
+    this.derivedNodes = nodes.length;
+    return [...this.derived];
+  }
+  /**
+   * Project one event with all committed message projections applied.
+   * The original durable event remains unchanged.
+   * @param event - the event to project.
+   * @returns the derived message, or null when the event produces none.
+   */
+  deriveEventMessage(event) {
+    return this.surfaceManager.deriveEventMessage(event);
+  }
+};
+var SUMMARY_OPEN_TAG = "<compacted-summary>";
+var SUMMARY_CLOSE_TAG = "</compacted-summary>";
+var COMPACTION_INSTRUCTION = [
+  "You are now acting as a compaction engine for this AI coding assistant. Condense the conversation ABOVE into a structured checkpoint that lets another model resume the work with no loss of essential context.",
+  "",
+  'Output EXACTLY the Markdown structure below: keep every section, in order. Use terse bullets, not prose paragraphs. Write "(none)" for an empty section \u2014 never drop a section.',
+  "",
+  "## Primary Request and Intent",
+  "- [the user's original and evolving goals; quote verbatim where the exact wording matters]",
+  "",
+  "## Key Technical Concepts",
+  "- [technologies, frameworks, patterns, and conventions in play]",
+  "",
+  "## Files and Code",
+  "- [exact path: why it matters, key changes or snippets]",
+  "",
+  "## Errors and Fixes",
+  "- [error: how it was resolved, plus any related user feedback]",
+  "",
+  "## Pending Jobs",
+  "- [explicitly requested work not yet completed]",
+  "",
+  "## Current Work",
+  "- [precisely what was in progress at this checkpoint]",
+  "",
+  "## Next Step",
+  '- [the single next action, directly in line with the most recent request, or "(none)"]',
+  "",
+  "## Critical Context",
+  "- [decisions and their rationale, constraints, user preferences, open questions, data needed to continue]",
+  "",
+  "Rules:",
+  "- Write concise English engineering prose. Preserve exact file paths, commands, error strings, identifiers, numeric values, function signatures, and syntax fragments.",
+  "- Capture user feedback and explicit instructions faithfully, especially corrections.",
+  "- Do NOT mention this summarization request or that the context was compacted.",
+  "- Output only the checkpoint text: do not call any tool or take any other action.",
+  `- If the conversation already contains a ${SUMMARY_OPEN_TAG} block, it is a PRIOR checkpoint. Do not copy it forward verbatim: preserve still-true facts, drop stale ones, and merge newer information into a single consolidated summary under the same structure.`
+].join("\n");
+var CHECKPOINT_PREAMBLE = "This is an automatically generated checkpoint condensing an earlier span of the conversation to free up context. Treat the captured context as established background and build on it without restating it. Continue the task directly from the messages that follow, without acknowledging this checkpoint.";
+async function summarizeWithLlm(ctx, config2, input2, agent, conversation, signal) {
+  const configured = config2.summarizationProvider.length === 0 ? void 0 : { provider: config2.summarizationProvider, model: config2.summarizationModel };
+  const target = configured ?? conversation;
+  if (target === void 0) {
+    throw new Error(
+      "no provider/model available for summarization: set both BasicCompactionConfig summarization fields, route one request, or set both AgentOptions fields"
+    );
+  }
+  const assembler = new BlockAssembler();
+  const messages = [
+    ...input2.messages,
+    deepFreeze({
+      role: "user",
+      content: [{ type: "text", text: COMPACTION_INSTRUCTION }]
+    })
+  ];
+  const options = {
+    provider: target.provider,
+    model: target.model,
+    messages,
+    toolHistory: agent.session.toolHistory(),
+    ...input2.tools === void 0 ? {} : { tools: [...input2.tools] },
+    maxTokens: config2.maxTokens,
+    sessionId: agent.session.id,
+    purpose: "compaction",
+    ...signal === void 0 ? {} : { signal }
+  };
+  for await (const chunk of ctx.llm.stream(options)) assembler.push(chunk);
+  const error62 = finishError(assembler.finish);
+  if (error62 !== void 0) throw error62;
+  const rawOutput = assembler.blocks();
+  const summary = summaryText(rawOutput);
+  if (!summary.some((block) => block.text.trim().length > 0)) {
+    throw new Error("summarization produced no text summary content");
+  }
+  return {
+    summary,
+    rawOutput,
+    llmStreamCall: true,
+    provider: options.provider,
+    model: options.model,
+    maxTokens: config2.maxTokens,
+    ...assembler.usage === void 0 ? {} : { usage: assembler.usage }
+  };
+}
+function frameSummary(summary) {
+  return [
+    { type: "text", text: `${CHECKPOINT_PREAMBLE}
+
+${SUMMARY_OPEN_TAG}` },
+    ...summary,
+    { type: "text", text: SUMMARY_CLOSE_TAG }
+  ];
+}
+function finishError(finish) {
+  switch (finish.kind) {
+    case "error":
+    case "aborted": {
+      return LlmError.fromFailure(finish.failure);
+    }
+    case "max-tokens": {
+      const error62 = new Error("summarization truncated at the token cap (incomplete checkpoint)");
+      error62.code = "MAX_TOKENS";
+      return error62;
+    }
+    default:
+      return void 0;
+  }
+}
+function summaryText(blocks) {
+  if (contentHasImage(blocks)) {
+    throw new LlmError("compaction summary cannot contain image output", "UNSUPPORTED_CONTENT");
+  }
+  return blocks.filter((block) => block.type === "text");
+}
+var SurfaceChangedError = class extends Error {
+};
+function systemHead(session, headSeq) {
+  const head = session.eventAt(headSeq);
+  return head.type === "system/message" ? head : void 0;
+}
+function selectCompactableRange(session, measurement, retainTokens) {
+  const pricedNodes = measurement.nodes;
+  if (pricedNodes.length === 0) return null;
+  const surfaceNodes = session.surface.nodes;
+  if (surfaceNodes.length !== pricedNodes.length || surfaceNodes.some((seq, index) => seq !== pricedNodes[index]?.seq)) {
+    throw new Error("compaction: token-meter surface does not match the current session surface");
+  }
+  const firstIdx = systemHead(session, surfaceNodes[0]) === void 0 ? 0 : 1;
+  let accumulated = 0;
+  let keepFromIdx = pricedNodes.length;
+  for (let index = pricedNodes.length - 1; index >= 0; index -= 1) {
+    accumulated += pricedNodes[index].tokens;
+    keepFromIdx = index;
+    if (accumulated >= retainTokens) break;
+  }
+  if (keepFromIdx <= firstIdx) return null;
+  while (keepFromIdx > firstIdx) {
+    if (toolPairingBalancedBefore(session, surfaceNodes[keepFromIdx])) break;
+    keepFromIdx -= 1;
+  }
+  if (keepFromIdx <= firstIdx) return null;
+  const first = surfaceNodes[firstIdx];
+  const cutoff = surfaceNodes[keepFromIdx - 1];
+  return { start: first, end: cutoff };
+}
+async function compactSurfaceRegion(dependencies, session, start, end, agent, options, signal) {
+  if (options.owner === null) signal?.throwIfAborted();
+  const selection = validateSurfaceRegion(session, start, end);
+  const entryState = inspectCompactionEntryState(session);
+  assertCompactionInactive(
+    entryState.unmatchedCompactionStart,
+    entryState.latestEndSeedSeq,
+    "compaction"
+  );
+  let owner;
+  if (options.owner === null) {
+    if (entryState.openTurn !== null) {
+      throw new ManualCompactionError("busy", "manual compaction: the session already has an open turn");
+    }
+    owner = null;
+  } else {
+    if (entryState.openTurn === null) {
+      throw new Error("compactRegion: no open turn \u2014 automatic compaction events must be enclosed in a turn");
+    }
+    owner = entryState.openTurn;
+  }
+  const compactionId = brandString(randomUUID4());
+  const lifecycle = {
+    compactionId,
+    ...options.sourceCommandId === void 0 ? {} : { sourceCommandId: options.sourceCommandId },
+    turn: owner
+  };
+  const startEvent = session.append("compaction/start", lifecycle);
+  const assertStable = options.stability === "whole-surface" ? assertWholeSurfaceUnchanged : assertSelectedSpanStable;
+  let failure2;
+  let flushFailure;
+  let result;
+  let closed = false;
+  let closing = false;
+  let stage = "summary";
+  try {
+    const prepared = prepareCompaction(dependencies, session, selection);
+    const summarized = await summarizeCompaction(
+      dependencies,
+      prepared,
+      agent,
+      compactionId,
+      options.sourceCommandId,
+      assertStable,
+      signal
+    );
+    if (options.owner === null) signal?.throwIfAborted();
+    assertStable(dependencies, session, summarized);
+    stage = "commit";
+    const pending = commitCompactionBody(session, startEvent, summarized);
+    closing = true;
+    const endEvent = session.append("compaction/end", lifecycle);
+    closed = true;
+    result = completeCompaction(pending, endEvent);
+  } catch (error62) {
+    failure2 = { error: error62, stage: closing ? "commit" : stage };
+    if (!closing) {
+      closing = true;
+      try {
+        session.append("compaction/end", { ...lifecycle, error: errorChain(error62) });
+        closed = true;
+      } catch (closeError) {
+        failure2 = { error: closeError, stage: "commit" };
+      }
+    }
+  }
+  if (closed && options.flush !== void 0) {
+    try {
+      await options.flush();
+    } catch (error62) {
+      flushFailure = error62;
+    }
+  }
+  if (options.owner === null) signal?.throwIfAborted();
+  if (failure2 !== void 0) {
+    if (options.owner === null) throwManualFailure(failure2);
+    throw failure2.error;
+  }
+  if (flushFailure !== void 0) {
+    throw new ManualCompactionError(
+      "persistence",
+      "manual compaction durability checkpoint failed",
+      { cause: flushFailure }
+    );
+  }
+  if (result === void 0) throw new Error("compaction committed without a result");
+  return result;
+}
+function throwManualFailure(failure2) {
+  if (failure2.stage === "commit") {
+    throw new ManualCompactionError(
+      "commit",
+      "manual compaction did not commit cleanly",
+      { cause: failure2.error }
+    );
+  }
+  if (failure2.error instanceof SurfaceChangedError) {
+    throw new ManualCompactionError(
+      "changed",
+      "the compacted history changed during manual compaction",
+      { cause: failure2.error }
+    );
+  }
+  throw new ManualCompactionError(
+    "summary",
+    "manual compaction could not produce a smaller summary",
+    { cause: failure2.error }
+  );
+}
+function assertCompactionInactive(unmatchedCompactionStart, latestEndSeedSeq, stage) {
+  if (unmatchedCompactionStart === void 0 || latestEndSeedSeq !== void 0 && latestEndSeedSeq > unmatchedCompactionStart.seq) return;
+  throw new ManualCompactionError(
+    "busy",
+    `${stage}: compaction already in progress; the session compaction lock is already active`
+  );
+}
+function assertNoActiveCompaction(session, stage) {
+  const entryState = inspectCompactionEntryState(session);
+  assertCompactionInactive(
+    entryState.unmatchedCompactionStart,
+    entryState.latestEndSeedSeq,
+    stage
+  );
+}
+function validateSurfaceRegion(session, start, end) {
+  const nodes = session.surface.nodes;
+  const startIdx = nodes.indexOf(start);
+  const endIdx = nodes.indexOf(end);
+  if (startIdx === -1) throw new Error(`compactRegion: start seq ${start} not found in surface`);
+  if (endIdx === -1) throw new Error(`compactRegion: end seq ${end} not found in surface`);
+  if (startIdx > endIdx) {
+    throw new Error(
+      `compactRegion: start seq ${start} (position ${startIdx}) is after end seq ${end} (position ${endIdx}) on the surface`
+    );
+  }
+  if (startIdx === 0 && systemHead(session, nodes[0]) !== void 0) {
+    throw new Error("compactRegion: the selected range includes the protected initial system message");
+  }
+  if (!toolPairingBalancedBefore(session, nodes[startIdx])) {
+    throw new Error(`compactRegion: start seq ${start} is not a balanced boundary (would split a step's tool-call/result pair)`);
+  }
+  if (!toolPairingBalancedAfter(session, nodes[endIdx])) {
+    throw new Error(`compactRegion: end seq ${end} is not a balanced boundary (would split a step, or the step is still open)`);
+  }
+  return { start, end, startIdx, endIdx, shadowedSeqs: nodes.slice(startIdx, endIdx + 1) };
+}
+function prepareCompaction(dependencies, session, selection) {
+  const measurement = dependencies.meter.measure(session);
+  const selectedNodes = measurement.nodes.slice(selection.startIdx, selection.endIdx + 1);
+  if (selectedNodes.length !== selection.shadowedSeqs.length || selectedNodes.some((node2, index) => node2.seq !== selection.shadowedSeqs[index])) {
+    throw new SurfaceChangedError("compaction: selected surface changed before summarization began");
+  }
+  return {
+    ...selection,
+    measurement,
+    selectedNodes,
+    // The shadow-price protocol prices replacements with the fixed heuristic
+    // so the O(1) projection fold stays in agreement with its own appends;
+    // retention, range selection, and the shrink comparison read the
+    // route-priced `tokens` instead.
+    shadowedTokenCount: selectedNodes.reduce((total, node2) => total + node2.heuristicTokens, 0),
+    shadowedRouteTokenCount: selectedNodes.reduce((total, node2) => total + node2.tokens, 0),
+    input: buildSummarizationInput(session, selection.shadowedSeqs)
+  };
+}
+async function summarizeCompaction(dependencies, prepared, agent, compactionId, sourceCommandId, assertStable, signal) {
+  let summaryResult;
+  for (; ; ) {
+    signal?.throwIfAborted();
+    try {
+      summaryResult = await dependencies.summarize(prepared.input, agent, signal);
+      break;
+    } catch (error62) {
+      if (signal?.aborted === true) throw error62;
+      assertStable(dependencies, agent.session, prepared);
+      if (!dependencies.recover(error62, agent, prepared.shadowedSeqs, signal)) throw error62;
+      prepared = prepareCompaction(
+        dependencies,
+        agent.session,
+        validateSurfaceRegion(agent.session, prepared.start, prepared.end)
+      );
+    }
+  }
+  const checkpointMessage = createUserMessage({
+    content: frameSummary(summaryResult.summary),
+    source: compactCheckpointSource(compactionId, sourceCommandId)
+  });
+  const framedSummaryTokenCount = dependencies.meter.estimateMessage(checkpointMessage);
+  if (framedSummaryTokenCount >= prepared.shadowedRouteTokenCount) {
+    throw new Error(
+      `summary is not smaller than the shadowed content (${framedSummaryTokenCount} estimated framed tokens >= ${prepared.shadowedRouteTokenCount})`
+    );
+  }
+  return {
+    ...prepared,
+    ...summaryResult,
+    checkpointMessage
+  };
+}
+function assertWholeSurfaceUnchanged(dependencies, session, prepared) {
+  const current = dependencies.meter.measure(session);
+  if (!isDeepStrictEqual(current.nodes, prepared.measurement.nodes)) {
+    throw new SurfaceChangedError("compaction: session surface changed during summarization");
+  }
+}
+function assertSelectedSpanStable(dependencies, session, prepared) {
+  let current;
+  try {
+    current = validateSurfaceRegion(session, prepared.start, prepared.end);
+  } catch (error62) {
+    throw new SurfaceChangedError(
+      "compaction: the selected span is no longer a valid replacement target",
+      { cause: error62 }
+    );
+  }
+  if (!isDeepStrictEqual([...current.shadowedSeqs], [...prepared.shadowedSeqs])) {
+    throw new SurfaceChangedError("compaction: the selected span changed during summarization");
+  }
+  const measured = dependencies.meter.measure(session).nodes.slice(current.startIdx, current.endIdx + 1);
+  if (!isDeepStrictEqual(measured, prepared.selectedNodes)) {
+    throw new SurfaceChangedError("compaction: the selected span was rewritten during summarization");
+  }
+}
+function commitCompactionBody(session, startEvent, summarized) {
+  const {
+    start,
+    end,
+    shadowedSeqs,
+    shadowedTokenCount,
+    summary,
+    provider,
+    model,
+    maxTokens,
+    usage,
+    checkpointMessage
+  } = summarized;
+  const callRecord = summarized.llmStreamCall === true ? { rawOutput: summarized.rawOutput, llmStreamCall: true } : summarized.rawOutput === void 0 ? {} : { rawOutput: summarized.rawOutput };
+  const summaryEvent = session.append("compaction/summary", {
+    compactionId: startEvent.data.compactionId,
+    ...startEvent.data.sourceCommandId === void 0 ? {} : { sourceCommandId: startEvent.data.sourceCommandId },
+    summary,
+    ...callRecord,
+    shadowedRange: { start, end },
+    shadowedSeqs: [...shadowedSeqs],
+    shadowedTokenCount,
+    provider,
+    model,
+    ...maxTokens === void 0 ? {} : { maxTokens },
+    ...usage === void 0 ? {} : { usage }
+  });
+  session.append("user/message", checkpointMessage, {
+    surfaceOp: { op: "replace", startSeq: start, endSeq: end },
+    sourceEventSeqs: [startEvent.seq, summaryEvent.seq, ...shadowedSeqs]
+  });
+  return {
+    compactionId: startEvent.data.compactionId,
+    ...startEvent.data.sourceCommandId === void 0 ? {} : { sourceCommandId: startEvent.data.sourceCommandId },
+    startSeq: startEvent.seq,
+    summarySeq: summaryEvent.seq,
+    summary,
+    shadowedRange: { start, end },
+    shadowedSeqs: [...shadowedSeqs],
+    shadowedTokenCount
+  };
+}
+function completeCompaction(pending, endEvent) {
+  return { ...pending, endSeq: endEvent.seq };
+}
+function buildSummarizationInput(session, shadowedSeqs) {
+  const header = session.requestHeader();
+  const head = systemHead(session, session.surface.nodes[0]);
+  const system = head === void 0 ? null : session.deriveEventMessage(head);
+  const regionMessages = shadowedSeqs.map((seq) => session.deriveEventMessage(session.eventAt(seq))).filter((message) => message !== null);
+  return {
+    ...header?.tools === void 0 ? {} : { tools: header.tools },
+    messages: system === null ? regionMessages : [system, ...regionMessages]
+  };
+}
+function inspectCompactionEntryState(session) {
+  let openTurn = null;
+  let openTurnStateKnown = false;
+  let unmatchedCompactionStart;
+  let compactionEntryStateKnown = false;
+  let latestEndSeedSeq;
+  for (let seq = session.seq - 1; seq >= 0; seq -= 1) {
+    const event = session.eventAt(SessionSeq(seq));
+    if (latestEndSeedSeq === void 0 && event.type === "session/end-seed") {
+      latestEndSeedSeq = event.seq;
+    }
+    if (!compactionEntryStateKnown) {
+      if (event.type === "compaction/start") {
+        unmatchedCompactionStart = event;
+        compactionEntryStateKnown = true;
+      } else if (event.type === "compaction/end") {
+        compactionEntryStateKnown = true;
+      }
+    }
+    if (!openTurnStateKnown) {
+      if (event.type === "turn/start") {
+        openTurn = event.data.turn;
+        openTurnStateKnown = true;
+      } else if (event.type === "turn/end") {
+        openTurnStateKnown = true;
+      }
+    }
+    if (openTurnStateKnown && compactionEntryStateKnown && latestEndSeedSeq !== void 0) break;
+  }
+  return { openTurn, unmatchedCompactionStart, latestEndSeedSeq };
+}
+function completeRoute(route) {
+  if (route?.provider === void 0 || route.provider.length === 0 || route.model === void 0 || route.model.length === 0) return void 0;
+  return { provider: route.provider, model: route.model };
+}
+function routedTarget(session) {
+  return completeRoute(session.requestHeader()?.config);
+}
+function reservedCompletionTokens(header, defaultMaxTokens) {
+  return header.config.maxTokens ?? defaultMaxTokens ?? 0;
+}
+function conversationTarget(agent, answered) {
+  return completeRoute(answered ?? void 0) ?? routedTarget(agent.session) ?? completeRoute(agent.options);
+}
+var thresholdRatioSchema = src_default.number();
+var headroomTokensSchema = src_default.number().step(1).min(0);
+var retainRatioSchema = src_default.number();
+var retainTokensSchema = src_default.number().step(1).min(0);
+var summarizationProviderSchema = src_default.string();
+var summarizationModelSchema = src_default.string();
+var maxTokensSchema = src_default.number().step(1).min(1);
+var compactionRetriesSchema = src_default.number().step(1).min(0);
+var maxOverflowRetriesSchema = src_default.number().step(1).min(0);
+var modelPolicy = src_default.object({
+  provider: src_default.string().required(),
+  model: src_default.string().required(),
+  thresholdRatio: thresholdRatioSchema,
+  headroomTokens: headroomTokensSchema,
+  retainRatio: retainRatioSchema,
+  retainTokens: retainTokensSchema,
+  summarizationProvider: summarizationProviderSchema,
+  summarizationModel: summarizationModelSchema,
+  maxTokens: maxTokensSchema,
+  compactionRetries: compactionRetriesSchema,
+  maxOverflowRetries: maxOverflowRetriesSchema
+});
+var BasicCompactionEngine = class extends CompactionEngine {
+  static inject = ["llm", "tokenMeter", "sessions", "sessionProjections"];
+  static Config = src_default.object({
+    thresholdRatio: thresholdRatioSchema,
+    headroomTokens: headroomTokensSchema,
+    retainRatio: retainRatioSchema,
+    retainTokens: retainTokensSchema,
+    summarizationProvider: summarizationProviderSchema,
+    summarizationModel: summarizationModelSchema,
+    maxTokens: maxTokensSchema,
+    compactionRetries: compactionRetriesSchema,
+    maxOverflowRetries: maxOverflowRetriesSchema,
+    modelPolicies: src_default.array(modelPolicy),
+    auto: src_default.boolean()
+  });
+  /** Resolved and validated compaction configuration. */
+  config;
+  warnedPressureConfigTargets = /* @__PURE__ */ new Set();
+  overflowRetries = /* @__PURE__ */ new WeakMap();
+  overflowAgents = /* @__PURE__ */ new WeakMap();
+  /** Registered at construction; `summarize()` awaits it, so no read precedes readiness. */
+  answeredRoute;
+  constructor(ctx, config2 = {}) {
+    super(ctx);
+    this.config = resolveConfig2(config2);
+    this.answeredRoute = this.ctx.sessionProjections.register(answeredRouteProjectionDefinition);
+    if (this.config.auto) this._registerAutomaticCompaction();
+  }
+  /** Fail plugin activation when the answered-route projection cannot register. */
+  async [Service.init]() {
+    await this.answeredRoute;
+  }
+  /**
+   * Register between-step pressure, model-switch pressure, and request-overflow
+   * recovery. Pre-step and overflow listeners dispatch through `compactIfNeeded`;
+   * model switches price the proposed header directly. All summaries use `summarize`.
+   */
+  _registerAutomaticCompaction() {
+    const { ctx } = this;
+    const logResult = (result, trigger) => {
+      ctx.logger.info(
+        `compaction (${trigger}): shadowed ${result.shadowedSeqs.length} surface nodes (seqs ${result.shadowedRange.start}-${result.shadowedRange.end}, ~${result.shadowedTokenCount} tokens)`
+      );
+    };
+    ctx.on("agent/pre-step", async ({ agent, signal }, next) => {
+      if (!signal.aborted) {
+        try {
+          const result = await this.compactIfNeeded(agent, "pressure", signal);
+          if (result !== null) logResult(result, "step pressure");
+        } catch (error62) {
+          if (error62 instanceof TargetPressureConfigError) {
+            if (this.warnedPressureConfigTargets.has(error62.targetKey)) return next();
+            this.warnedPressureConfigTargets.add(error62.targetKey);
+          }
+          const message = error62 instanceof Error ? error62.message : String(error62);
+          ctx.logger.warn(`step compaction failed: ${message}; continuing the turn`);
+        }
+      }
+      return next();
+    });
+    ctx.on("agent/status", ({ agent, status }) => {
+      if (status === "idle") this.overflowRetries.delete(agent);
+    });
+    ctx.on("agent/request", async ({ agent, signal }, next) => {
+      const config2 = await next();
+      const previous = agent.session.requestHeader();
+      if (signal.aborted || previous === void 0 || config2.provider === "" || config2.model === "" || previous.config.provider === config2.provider && previous.config.model === config2.model) return config2;
+      try {
+        const header = { ...previous, config: config2 };
+        const result = await this.compactPressure(agent, header, signal, true);
+        if (result !== null) logResult(result, "model switch");
+      } catch (error62) {
+        signal.throwIfAborted();
+        const message = error62 instanceof Error ? error62.message : String(error62);
+        throw new LlmError(
+          `Cannot switch to ${config2.provider}/${config2.model}: context compaction failed: ${message}. The previous request model is preserved; retry or select a model with a larger context window.`,
+          "MODEL_SWITCH_COMPACTION_FAILED",
+          { cause: error62 }
+        );
+      }
+      return config2;
+    }, { prepend: true });
+    ctx.on("session/event", (session, event) => {
+      if (event.type !== "assistant/message") return;
+      const agent = this.overflowAgents.get(session);
+      if (agent !== void 0) this.overflowRetries.delete(agent);
+    });
+    ctx.on("agent/request-error", async ({ agent, failure: failure2, signal }, next) => {
+      if (failure2.code !== CONTEXT_WINDOW_EXCEEDED_CODE || signal.aborted) return next();
+      this.overflowAgents.set(agent.session, agent);
+      const target = routedTarget(agent.session);
+      if (target === void 0) return next();
+      const policy = resolveTargetPolicy(this.config, target);
+      const retries = this.overflowRetries.get(agent) ?? 0;
+      if (retries >= policy.maxOverflowRetries) return next();
+      const generation = agent.session.surface.replaceGeneration;
+      let result;
+      try {
+        result = await this.compactIfNeeded(agent, "context-overflow", signal);
+      } catch (recoveryError) {
+        const message = recoveryError instanceof Error ? recoveryError.message : String(recoveryError);
+        if (!signal.aborted && agent.session.surface.replaceGeneration > generation) {
+          ctx.logger.warn(
+            `context-overflow compaction failed after durable surface progress: ${message}; retrying from the replacement surface`
+          );
+          this.overflowRetries.set(agent, retries + 1);
+          return { kind: "retry" };
+        }
+        ctx.logger.warn(
+          // oxlint-disable-next-line typescript/no-unnecessary-condition -- the signal can abort while recovery is awaited.
+          `context-overflow compaction failed: ${message}; ${signal.aborted ? "cancellation prevents retry" : "preserving the original request error"}`
+        );
+        return next();
+      }
+      if (signal.aborted || agent.session.surface.replaceGeneration <= generation) return next();
+      if (result !== null) logResult(result, "context overflow recovery");
+      this.overflowRetries.set(agent, retries + 1);
+      return { kind: "retry" };
+    });
+  }
+  /**
+   * Summarize the replayed conversation region through a direct one-shot
+   * `ctx.llm.stream()` call whose prefix reuses the conversation's own system
+   * prompt, tools, and messages so the provider's KV cache is not invalidated.
+   * Without a configured summary target the call goes to the route recorded
+   * on the latest assistant message, then the latest request header, then the
+   * agent options. A model selected for a later request is not used.
+   * Override this sole hook for a template or remote summarizer.
+   * @param input - replayed conversation prefix (system, tools, and leading messages) to condense.
+   * @param agent - supplies the session history, fallback model, and session id.
+   * @param signal - optional cancellation forwarded to the adapter.
+   * @returns safe text summary blocks and the exact auxiliary call envelope and output.
+   */
+  async summarize(input2, agent, signal) {
+    const target = conversationTarget(agent, (await this.answeredRoute).stateOf(agent.session));
+    const config2 = target === void 0 ? this.config : resolveTargetPolicy(this.config, target);
+    return summarizeWithLlm(this.ctx, config2, input2, agent, target, signal);
+  }
+  /**
+   * Compact for replayed step-boundary pressure or one provider-confirmed context
+   * overflow. Both triggers price the latest durable routed request envelope;
+   * overflow bypasses the normal threshold and retained-tail policy so it can
+   * force one useful balanced reduction.
+   * @param agent - agent whose latest durable routed request is measured.
+   * @param trigger - normal step-boundary pressure or context-overflow recovery.
+   * @param signal - live turn cancellation signal forwarded to summarization.
+   * @returns the latest summary compaction result, or `null` when no summary ran.
+   */
+  async compactIfNeeded(agent, trigger, signal) {
+    const header = agent.session.requestHeader();
+    if (header === void 0 || routedTarget(agent.session) === void 0) return null;
+    switch (trigger) {
+      case "pressure":
+        return this.compactPressure(agent, header, signal, false);
+      case "context-overflow": {
+        this.ctx.get("toolResultPruner")?.pruneSession(agent.session);
+        const measurement = this.ctx.tokenMeter.measure(agent.session);
+        const range = selectCompactableRange(agent.session, measurement, 0);
+        if (range === null) return null;
+        return this.compactRegion(range.start, range.end, agent, signal);
+      }
+      /* v8 ignore next -- closed-union exhaustiveness guard */
+      default:
+        assertNever(trigger, "compaction trigger");
+    }
+  }
+  /** Price the proposed header; switch checks require history below its threshold. */
+  async compactPressure(agent, header, signal, requireBelowThreshold) {
+    const target = header.config;
+    const policy = resolveTargetPolicy(this.config, target);
+    const meter = this.ctx.tokenMeter;
+    let measurement = meter.measure(agent.session, header);
+    const prune = this.ctx.get("toolResultPruner");
+    const info = await this.ctx.llm.resolveModelInfo(target.provider, target.model, signal);
+    assertNoActiveCompaction(agent.session, "automatic pressure compaction");
+    const targetKey = `${target.provider}/${target.model}`;
+    if (info.context === void 0) {
+      throw new TargetPressureConfigError(
+        targetKey,
+        `compaction-basic: no context capacity for ${targetKey}; configure contextWindow on that adapter model`
+      );
+    }
+    const spec = resolveCompactSpec(
+      policy,
+      info.context.contextWindow,
+      reservedCompletionTokens(header, info.defaultMaxTokens)
+    );
+    if (measurement.totalTokens < spec.thresholdTokens) return null;
+    if (prune !== void 0) {
+      prune.pruneSession(agent.session);
+      measurement = meter.measure(agent.session, header);
+    }
+    if (measurement.totalTokens < spec.thresholdTokens) return null;
+    let result = null;
+    for (let attempt = 0; attempt <= spec.compactionRetries; attempt += 1) {
+      const range = selectCompactableRange(agent.session, measurement, spec.retainTokens);
+      if (range === null) {
+        if (result === null && !requireBelowThreshold) return null;
+        throw new Error(
+          `no safe compaction range can reduce context below threshold (${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`
+        );
+      }
+      result = await this.compactRegion(range.start, range.end, agent, signal);
+      measurement = meter.measure(agent.session, header);
+      if (measurement.totalTokens < spec.thresholdTokens) return result;
+    }
+    throw new Error(
+      `compaction still above threshold after ${spec.compactionRetries + 1} compaction attempts (${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`
+    );
+  }
+  /**
+   * Compact one inclusive positional range from the agent-owned surface using
+   * the effective token meter for all retention and shrink pricing.
+   * @param start - inclusive first surface-node seq.
+   * @param end - inclusive last surface-node seq.
+   * @param agent - owner of the target session, used by the summarizer.
+   * @param signal - optional summarization cancellation signal.
+   * @returns the successful durable compaction result.
+   */
+  async compactRegion(start, end, agent, signal) {
+    return compactSurfaceRegion(
+      this.regionDependencies(),
+      agent.session,
+      start,
+      end,
+      agent,
+      { owner: "current-turn", stability: "whole-surface" },
+      signal
+    );
+  }
+  /**
+   * Force one useful idle-session compaction below the pressure threshold, and
+   * resolve only after its standalone marker pair is durably checkpointed.
+   * @param agent - idle agent whose next-turn admission this call reserves.
+   * @param signal - cancellation scoped to this compaction request.
+   * @param sourceCommandId - initiating command identity for presentation correlation.
+   * @returns the committed result, or `null` when no safe useful range exists.
+   */
+  compactNow(agent, signal, sourceCommandId) {
+    signal.throwIfAborted();
+    try {
+      return agent.runMaintenance(async (agentSignal) => {
+        const operationSignal = AbortSignal.any([agentSignal, signal]);
+        try {
+          operationSignal.throwIfAborted();
+          const range = selectCompactableRange(
+            agent.session,
+            this.ctx.tokenMeter.measure(agent.session),
+            0
+          );
+          if (range === null) return null;
+          return await compactSurfaceRegion(
+            this.regionDependencies(),
+            agent.session,
+            range.start,
+            range.end,
+            agent,
+            {
+              owner: null,
+              stability: "selected-span",
+              ...sourceCommandId === void 0 ? {} : { sourceCommandId },
+              flush: async () => {
+                await this.ctx.sessions.flush(agent.session);
+              }
+            },
+            operationSignal
+          );
+        } catch (error62) {
+          if (agentSignal.aborted && operationSignal.reason === agentSignal.reason) {
+            throw new ManualCompactionError(
+              "cancelled",
+              "manual compaction was cancelled",
+              { cause: error62 }
+            );
+          }
+          operationSignal.throwIfAborted();
+          throw error62;
+        }
+      });
+    } catch (error62) {
+      throw new ManualCompactionError(
+        "busy",
+        "manual compaction requires an idle agent with no waking queued work",
+        { cause: error62 }
+      );
+    }
+  }
+  /** Bind the effective token meter and dynamically dispatched summarizer hook. */
+  regionDependencies() {
+    return {
+      meter: this.ctx.tokenMeter,
+      summarize: (input2, owner, abort) => this.summarize(input2, owner, abort),
+      recover: (error62, agent, sourceEventSeqs, signal) => this.ctx.waterfall("compaction/summary-error", {
+        session: agent.session,
+        sourceEventSeqs,
+        error: error62,
+        ...signal === void 0 ? {} : { signal }
+      }, () => false)
+    };
+  }
+};
+var PRUNE_MARKER = "\n\n[... tool result middle pruned ...]\n\n";
+var DEFAULTS = deepFreeze({
+  thresholdChars: 8192,
+  headChars: 4096,
+  tailChars: 1024
+});
+var CONFIG_KEYS = /* @__PURE__ */ new Set([
+  "thresholdChars",
+  "headChars",
+  "tailChars"
+]);
+function codePointLength2(text) {
+  return Array.from(text).length;
+}
+function resolveConfig3(config2 = {}) {
+  for (const key of Object.keys(config2)) {
+    if (!CONFIG_KEYS.has(key)) {
+      throw new Error(
+        `ToolResultPruneConfig: unknown key "${key}" (allowed: thresholdChars, headChars, tailChars)`
+      );
+    }
+  }
+  const resolved = {
+    thresholdChars: config2.thresholdChars ?? DEFAULTS.thresholdChars,
+    headChars: config2.headChars ?? DEFAULTS.headChars,
+    tailChars: config2.tailChars ?? DEFAULTS.tailChars
+  };
+  assertPositiveInteger2("thresholdChars", resolved.thresholdChars);
+  assertNonNegativeInteger2("headChars", resolved.headChars);
+  assertNonNegativeInteger2("tailChars", resolved.tailChars);
+  const emittedChars = resolved.headChars + codePointLength2(PRUNE_MARKER) + resolved.tailChars;
+  if (emittedChars > resolved.thresholdChars) {
+    throw new Error(
+      `ToolResultPruneConfig: headChars + marker + tailChars (${emittedChars}) must be at most thresholdChars (${resolved.thresholdChars})`
+    );
+  }
+  return deepFreeze(structuredClone(resolved));
+}
+function assertPositiveInteger2(name2, value) {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`ToolResultPruneConfig: ${name2} (${value}) must be a positive integer`);
+  }
+}
+function assertNonNegativeInteger2(name2, value) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`ToolResultPruneConfig: ${name2} (${value}) must be a non-negative integer`);
+  }
+}
+var ToolResultPruner = class extends Service {
+  // The token meter prices each shadowed node for its logged shadow-price
+  // event, so pruning genuinely requires the pricing capability.
+  static inject = ["tokenMeter"];
+  static Config = src_default.object({
+    thresholdChars: src_default.number().step(1).min(1).default(DEFAULTS.thresholdChars),
+    headChars: src_default.number().step(1).min(0).default(DEFAULTS.headChars),
+    tailChars: src_default.number().step(1).min(0).default(DEFAULTS.tailChars)
+  });
+  /** Resolved and immutable character budgets. */
+  config;
+  constructor(ctx, config2 = {}) {
+    super(ctx, "toolResultPruner");
+    this.config = resolveConfig3(config2);
+  }
+  /**
+   * Measure text content in Unicode code points; non-text blocks cost zero.
+   * @param blocks - tool-result content to measure.
+   * @returns total Unicode code points across text blocks.
+   */
+  measureContent(blocks) {
+    let chars = 0;
+    for (const block of blocks) {
+      if (block.type === "text") chars += codePointLength2(block.text);
+    }
+    return chars;
+  }
+  /**
+   * Replace an over-budget text middle while retaining rich-block order.
+   * Text slicing is by Unicode code point, not UTF-16 code unit, so a retained
+   * boundary cannot split a surrogate pair. Grapheme clusters may still split.
+   * @param blocks - original tool-result content.
+   * @returns pruned content, or `null` when the text is within budget.
+   */
+  pruneContent(blocks) {
+    const totalChars = this.measureContent(blocks);
+    if (totalChars <= this.config.thresholdChars) return null;
+    const removedStart = this.config.headChars;
+    const removedEnd = totalChars - this.config.tailChars;
+    const pruned = [];
+    let consumed = 0;
+    let markerInserted = false;
+    for (const block of blocks) {
+      if (block.type !== "text") {
+        pruned.push(block);
+        continue;
+      }
+      const points = Array.from(block.text);
+      const blockStart = consumed;
+      const blockEnd = blockStart + points.length;
+      const headEnd = Math.min(points.length, Math.max(0, removedStart - blockStart));
+      const tailStart = Math.min(points.length, Math.max(0, removedEnd - blockStart));
+      const intersectsRemoved = blockStart < removedEnd && blockEnd > removedStart;
+      const marker = intersectsRemoved && !markerInserted ? PRUNE_MARKER : "";
+      if (marker.length > 0) markerInserted = true;
+      const text = points.slice(0, headEnd).join("") + marker + points.slice(tailStart).join("");
+      if (text.length > 0) pruned.push({ ...block, text });
+      consumed = blockEnd;
+    }
+    if (!markerInserted) throw new Error("tool-result prune: failed to locate the removed text span");
+    const charsAfter = this.measureContent(pruned);
+    if (charsAfter > this.config.thresholdChars || charsAfter >= totalChars) {
+      throw new Error("tool-result prune: replacement must be smaller and within threshold");
+    }
+    return pruned;
+  }
+  /**
+   * Prune every over-budget tool result from one stable current-surface snapshot.
+   * Each replacement preserves the complete event data except for `content`,
+   * cites the shadowed node so replay can recover the replacement input, and is
+   * immediately preceded by a `compaction/prune` shadow-price event pricing the
+   * shadowed node through the injected token meter, so pure consumers can
+   * subtract it without per-node state.
+   * @param session - session whose current surface is rewritten.
+   * @returns landed replacements and aggregate Unicode-code-point savings.
+   * @throws when the session rejects a replacement; replacements committed
+   * earlier in the pass remain durable.
+   */
+  pruneSession(session) {
+    const candidates = [];
+    for (const seq of [...session.surface.nodes]) {
+      const event = session.eventAt(seq);
+      if (event?.type === "tool/result") candidates.push({ seq, event });
+    }
+    const pruned = [];
+    let charsRemoved = 0;
+    for (const { seq, event } of candidates) {
+      const original = session.deriveEventMessage(event);
+      const content = this.pruneContent(original.content);
+      if (content === null) continue;
+      const charsBefore = this.measureContent(original.content);
+      const charsAfter = this.measureContent(content);
+      const message = freezeMessage({
+        ...original,
+        content
+      });
+      session.append("compaction/prune", {
+        shadowedRange: { start: seq, end: seq },
+        shadowedSeqs: [seq],
+        shadowedTokenCount: this.ctx.tokenMeter.estimateMessage(original)
+      });
+      const replacement = session.append("tool/result", {
+        ...event.data,
+        message
+      }, {
+        surfaceOp: { op: "replace", startSeq: seq, endSeq: seq },
+        sourceEventSeqs: [seq]
+      });
+      pruned.push({
+        originalSeq: seq,
+        replacementSeq: replacement.seq,
+        callId: event.data.message.source.callId,
+        charsBefore,
+        charsAfter
+      });
+      charsRemoved += charsBefore - charsAfter;
+    }
+    return { pruned, charsRemoved };
+  }
+};
 var CHARS_PER_TOKEN = 4;
 var BLOCK_OVERHEAD = 4;
 var ROLE_OVERHEAD = 4;
@@ -28699,12 +28883,14 @@ function estimateContent(blocks) {
   return tokens;
 }
 function estimateSystemMessage(message) {
-  if (message.content.length === 0) return 0;
   let characters = 0;
   for (const block of message.content) {
-    characters += block.type === "text" ? block.text.length : JSON.stringify(block).length;
+    const text = block.type === "text" ? block.text.trim() : JSON.stringify(block);
+    if (text.length === 0) continue;
+    if (characters > 0) characters += 2;
+    characters += text.length;
   }
-  return Math.ceil(characters / CHARS_PER_TOKEN) + ROLE_OVERHEAD;
+  return characters === 0 ? 0 : Math.ceil(characters / CHARS_PER_TOKEN) + ROLE_OVERHEAD;
 }
 function estimateMessage(message) {
   if (message.role === "system") return estimateSystemMessage(message);
@@ -28773,7 +28959,7 @@ function placeSurfaceEvent(state, claim2, event, tokens) {
 }
 function withTotals(state, totals) {
   const surfaceTokens = Math.max(0, totals.surfaceTokens);
-  const systemTokens = totals.systems.findLast((system) => system.tokens > 0)?.tokens ?? 0;
+  const systemTokens = totals.systems.reduce((sum, system) => sum + system.tokens, 0);
   const messageTokens = Math.max(0, surfaceTokens - systemTokens);
   const breakdown = systemTokens === state.breakdown.systemTokens && messageTokens === state.breakdown.messageTokens ? state.breakdown : { systemTokens, toolsTokens: state.breakdown.toolsTokens, messageTokens };
   return { ...state, systems: totals.systems, surfaceTokens, breakdown };
@@ -28785,7 +28971,7 @@ function withoutClaim(state) {
 }
 var contextBreakdownProjectionDefinition = {
   key: "contextBreakdown",
-  stateVersion: 6,
+  stateVersion: 7,
   stateSchema: contextBreakdownStateSchema,
   init: () => ({
     systems: [],
@@ -28933,7 +29119,7 @@ var tokenUsageProjectionDefinition = {
 };
 var contextPressureProjectionDefinition = {
   key: "contextPressure",
-  stateVersion: 5,
+  stateVersion: 6,
   stateSchema: contextPressureStateSchema,
   init: () => ({ surfaceTokens: 0 }),
   apply: (state, event) => {
@@ -29549,14 +29735,14 @@ var ImageBridge = class {
       );
     const limits = model.inputLimits?.images;
     const maxImages = limits?.maxPerRequest ?? 50;
-    const budget = {
+    const budget2 = {
       representation: "base64",
       maxBytes: 20 * 1024 * 1024,
       maxImages,
       countQuantum: Math.min(10, maxImages)
     };
     const bytesOf = (block) => Buffer.from(imageOf(block).data, "base64").length;
-    let count = requiredImageOffload(messages, budget, bytesOf);
+    let count = requiredImageOffload(messages, budget2, bytesOf);
     if (limits?.maxPerMessage)
       for (const message of messages)
         count = Math.max(
@@ -29588,19 +29774,17 @@ var ImageBridge = class {
         const dimensions = requestImageDimensions(
           ref.width,
           ref.height,
-          2048 * 2048
+          2048 * 2048,
+          resize?.maxWidth,
+          resize?.maxHeight
         );
-        const scale = Math.min(
-          1,
-          (resize?.maxWidth ?? dimensions.width) / dimensions.width,
-          (resize?.maxHeight ?? dimensions.height) / dimensions.height
-        );
+        const maxImageBytes = resize?.maxBytes ?? 1024 * 1024;
         const version3 = await this.store.readImageRequest(
           ref,
           {
-            width: Math.max(1, Math.floor(dimensions.width * scale)),
-            height: Math.max(1, Math.floor(dimensions.height * scale)),
-            maxBytes: resize?.maxBytes ?? 1024 * 1024
+            ...dimensions,
+            maxImageBytes,
+            imageTargetBytes: maxImageBytes
           },
           signal
         );
@@ -29730,11 +29914,15 @@ function isDshFile(file2) {
   }
 }
 function archivedPi(header, events) {
-  const entries = events.filter((event) => [PI_ARCHIVE, "plugin:zcp/pi-entry"].includes(event.type)).map((event) => event.data);
+  const isPiEntry = (event) => [PI_ARCHIVE, "plugin:zcp/pi-entry"].includes(event.type);
+  const entries = events.filter(isPiEntry).map((event) => event.data);
   const original = events.find(
     (event) => [PI_HEADER, "plugin:zcp/pi-header"].includes(event.type)
   )?.data;
   if (!original && !entries.length) return;
+  const end = events.findLastIndex((event) => isPiEntry(event) || [PI_HEADER, "plugin:zcp/pi-header"].includes(event.type));
+  if (events.slice(end + 1).some((event) => event.surfaceOp || event.type === "image/offload"))
+    return;
   return { header: original ?? piHeader(header), entries };
 }
 function piHeader(header) {
@@ -29794,6 +29982,8 @@ function messageEntry(id, parentId, time3, message) {
   return { ...base, message: { ...message, timestamp: time3 } };
 }
 async function dshToPi(input2, output2) {
+  if (path.resolve(input2) === path.resolve(output2))
+    throw new Error("Choose a separate output file for session conversion");
   const dsh = await readDshFile(input2);
   if (!dsh) throw new Error(`${input2}: not a DSH session file`);
   const archived = archivedPi(dsh.header, dsh.events);

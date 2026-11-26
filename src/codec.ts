@@ -15,7 +15,11 @@ import {
   SESSION_FORMAT_VERSION,
   imageOffloadProjection,
 } from '../vendor/dsh-runtime.mjs'
-import { createSyncState, syncPiEntries } from './dsh/sync.ts'
+import { closeTurn, createSyncState, syncPiEntries } from './dsh/sync.ts'
+import type { SessionEntry } from '@earendil-works/pi-coding-agent'
+import { buildSessionPath, buildSessionProjection } from '../vendor/pi-session-projection.mjs'
+import { convertToLlm } from '../vendor/pi-messages.mjs'
+import { readTransactions, replay } from './bridge.ts'
 import { headerForSession, type DshHeader } from './dsh/session.ts'
 import { projectSurface } from './dsh/projection.ts'
 export interface PiHeader {
@@ -49,14 +53,31 @@ export function archivedPi(
   header: DshHeader,
   events: any[],
 ): { header: PiHeader; entries: any[] } | undefined {
+  const isPiEntry = (event: any) => [PI_ARCHIVE, 'plugin:zcp/pi-entry'].includes(event.type)
   const entries = events
-    .filter((event) => [PI_ARCHIVE, 'plugin:zcp/pi-entry'].includes(event.type))
+    .filter(isPiEntry)
     .map((event) => event.data)
   const original = events.find((event) =>
     [PI_HEADER, 'plugin:zcp/pi-header'].includes(event.type),
   )?.data
   if (!original && !entries.length) return
+  // Use the live DSH surface when the export was continued in DSH.
+  const end = events.findLastIndex((event) => isPiEntry(event) ||
+    [PI_HEADER, 'plugin:zcp/pi-header'].includes(event.type))
+  if (events.slice(end + 1).some((event) => event.surfaceOp || event.type === 'image/offload'))
+    return
   return { header: original ?? piHeader(header), entries }
+}
+
+export function projectPiForDsh(entries: readonly SessionEntry[]) {
+  const { messages } = buildSessionProjection(entries)
+  const system = messages.filter((message) => message.role === 'system').at(-1)
+  const conversation = replay(
+    messages.filter((message) => message.role !== 'system'),
+    readTransactions(buildSessionPath(entries)),
+  )
+  return convertToLlm(system ? [system, ...conversation] : conversation)
+    .map((message, index) => ({ type: 'message', id: `projected-${index}`, message }))
 }
 function piHeader(header: DshHeader): PiHeader {
   return {
@@ -106,6 +127,7 @@ export function dshRowsFromPi(
   entries: readonly any[],
   _file?: string,
   imageToDsh?: (image: any) => any,
+  projected = projectPiForDsh(entries),
 ): string {
   const header: DshHeader = {
     type: 'session',
@@ -120,10 +142,11 @@ export function dshRowsFromPi(
   const session = Session.create(header.id, [], headerForSession(header))
   appendPluginRecord(session, PI_HEADER, JSON.parse(JSON.stringify(pi)))
   const state = createSyncState()
+  syncPiEntries(session, projected, state, { imageToDsh })
+  closeTurn(session, state)
   // Preserve every entry, its original id, parent and metadata. DSH's message
   // surface is an export view; pi resumes from the lossless archive records.
   for (const entry of entries) {
-    syncPiEntries(session, [entry], state, { imageToDsh })
     appendPluginRecord(session, PI_ARCHIVE, JSON.parse(JSON.stringify(entry)))
   }
   return (
@@ -138,9 +161,10 @@ export function writeDshFromPi(
   header: PiHeader,
   entries: readonly any[],
   imageToDsh?: (image: any) => any,
+  projected?: ReturnType<typeof projectPiForDsh>,
 ): void {
   mkdirSync(path.dirname(file), { recursive: true })
-  const body = dshRowsFromPi(header, entries, file, imageToDsh)
+  const body = dshRowsFromPi(header, entries, file, imageToDsh, projected)
   const tmp = `${file}.${process.pid}.tmp`
   writeFileSync(tmp, body)
   renameSync(tmp, file)

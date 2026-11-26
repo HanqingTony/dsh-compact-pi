@@ -1,0 +1,43 @@
+name: Pi session compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      pi_version:
+        description: Exact candidate pi version to test
+        default: '1.6.0'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  resume:
+    name: Resume sessions on pi ${{ matrix.pi_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        pi_version:
+          - '1.5.2'
+          - "${{ inputs.pi_version || '1.6.0' }}"
+    env:
+      DCP_TEST_PI_VERSION: ${{ matrix.pi_version }}
+      PI_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.3'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:resume
+      - if: matrix.pi_version == '1.5.2'
+        run: node --import tsx --test test/differential.test.ts test/images-convert.test.ts

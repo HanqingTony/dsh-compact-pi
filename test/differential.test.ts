@@ -1,6 +1,12 @@
 /** Compare pi compatibility with direct calls to the unmodified upstream Cordis plugins. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, rmSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { SessionManager } from '@earendil-works/pi-coding-agent'
+import { dshToPi } from '../src/dsh/convert.ts'
+import { writeDshFile } from '../src/dsh/store.ts'
 import {
   Context,
   SessionStore,
@@ -18,7 +24,7 @@ import {
   type CompatibleAgent,
   type EngineBundle,
 } from '../src/dsh/engine.ts'
-import { createSession } from '../src/dsh/session.ts'
+import { createSession, makeHeader } from '../src/dsh/session.ts'
 import { createSyncState, syncPiEntries, closeTurn } from '../src/dsh/sync.ts'
 
 type Item = {
@@ -476,6 +482,36 @@ const fixtures: {
     ],
   },
 ]
+test('pi imports the effective surface of a checkpoint produced by the pinned DSH engine', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dcp-native-migration-'))
+  const upstream = await reference([])
+  try {
+    const session = seedReference(upstream, [
+      { role: 'user', text: 'SHORTEN THIS HISTORY '.repeat(500) },
+      { role: 'assistant', text: 'KEPT ANSWER' },
+    ], true)
+    upstream.flush = async (current) => {
+      await writeDshFile(path.join(dir, 'source.dsh.jsonl'), makeHeader(current.id, dir), current.snapshotEvents())
+    }
+    const signal = new AbortController().signal
+    await upstream.engine.compactNow({
+      session,
+      options: { provider: model.provider, model: model.id },
+      runMaintenance: (task: any) => task(signal),
+    }, signal)
+    const dest = path.join(dir, 'migrated.pi.jsonl')
+    await dshToPi(path.join(dir, 'source.dsh.jsonl'), dest)
+    const projection = SessionManager.open(dest).buildSessionProjection()
+    const messages = JSON.stringify(projection.messages)
+    assert.ok(messages.includes(summary))
+    assert.ok(messages.includes('KEPT ANSWER'))
+    assert.ok(!messages.includes('SHORTEN THIS HISTORY'))
+  } finally {
+    await upstream.ctx.fiber.dispose()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 for (const fixture of fixtures)
   test(`upstream differential: ${fixture.name}`, async () => {
     const expectedCalls: any[] = [],

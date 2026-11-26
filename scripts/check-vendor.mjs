@@ -28,6 +28,7 @@ if (packageInfo.dependencies?.sharp !== attachmentPackage.dependencies.sharp)
 for (const [file, expected] of [
   ['dsh-runtime.mjs', manifest.runtimeSha256],
   ['pi-messages.mjs', manifest.pi.sha256],
+  ['pi-session-projection.mjs', manifest.pi.projection.sha256],
 ]) {
   const actual = createHash('sha256')
     .update(readFileSync(path.join(root, file)))

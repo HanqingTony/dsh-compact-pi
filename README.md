@@ -2,12 +2,12 @@
 
 An installable pi extension hosting **unmodified DeepSeek Harness compaction plugins in real Cordis**. DCP adapts a defined common subset of pi and DSH; its source updater copies upstream files without rewriting imports or patching the compression algorithm.
 
-Requires pi 1.5.2 and Node.js >=24.9.0 (matching the upstream source runtime requirement). DCP's version uses the upstream DSH base version plus its own build number: currently **0.2.2b3** (DSH base 0.2.2, DCP build 3). The npm SemVer is `0.2.2-b3`; `/dcp-status` and Ctrl+O display `0.2.2b3`. Subsequent DCP builds increment `b4`, `b5`, etc., independently of the upstream snapshot. The exact DSH snapshot is 0.2.2-rc.5, pinned in [vendor/manifest.json](vendor/manifest.json) and shown separately by `/dcp-status`. Running or building DCP does not require a DSH checkout.
+Tested with pi 1.5.2 and 1.6.0. Node.js must satisfy `^24.22.3 || >=26.13.1`. DCP **0.2.3b1** uses DeepSeek Harness **0.2.3-alpha.2**. `/dcp-status` shows both versions and the upstream commit recorded in [vendor/manifest.json](vendor/manifest.json). The Git tag and npm version use the SemVer spelling `0.2.3-b1`. The source snapshot is included in the package.
 
 ## Install and use
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b3
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b1
 ```
 
 Restart pi or `/reload`, then `/dcp-status`. The Git tag pins this release. To follow future releases on the default branch, use `pi install git:github.com/HanqingTony/dsh-compact-pi`. Before switching from a local DCP installation, use `pi list` and `pi remove <old-source>` to remove the old package entry and avoid loading DCP twice. To install a development checkout, use `pi install /absolute/path/to/dsh-compact-pi`. For one run:
@@ -19,12 +19,14 @@ pi --no-extensions -e /absolute/path/to/dsh-compact-pi/dist/index.js
 | Command | Behavior |
 |---|---|
 | `/dcp-status` | Loaded versions, policy budgets and compatibility scope |
+| `/dcp-summary-model` | Choose the project default DCP summary model from available pi models |
+| `/dcp-summary-model reset` | Restore automatic selection for the project default |
 | `/dcp-compact` | Manual upstream `compactNow()` through pi's compaction controller; idle only, no arguments |
 | `/compact` | Pi's standard command intercepted by DCP; use while idle, without instructions |
 
 Automatic pressure checks use DSH's `agent/pre-step` listener. Overflow decisions and budgets belong to DSH's `agent/request-error` listener. Manual compaction uses DSH's `compactNow()`, including its persistence checkpoint. DCP does not add manual pre-pruning, an emergency pressure fallback, a fixed 8K summary cap, or adaptive headroom.
 
-Do not load bcp/bcp-lean or another context-rewriting extension alongside DCP. The project configuration in this checkout disables those packages locally. This release is distributed through GitHub; npm publication is pending.
+Do not load bcp/bcp-lean or another context-rewriting extension alongside DCP. The project configuration in this checkout disables those packages locally.
 
 ## Updating an existing installation
 
@@ -32,15 +34,14 @@ In pi 1.5.2, `pi update` alone updates **pi itself**. Use `pi update --extension
 
 | Installed source | Update behavior |
 |---|---|
-| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b1` | Pinned to b1; package updates do not advance it to b3 |
-| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b3` | Pinned to b3; package updates do not select a future release |
+| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b1` | Stays on this tag until you install a different tag |
 | `git:github.com/HanqingTony/dsh-compact-pi` | Follows the default branch (`main`), including changes between tagged releases |
 | Local checkout | Uses local files; pi does not fetch a new release for that path |
 
-To upgrade a pinned b1 or b2 installation to b3, run on the machine where pi is installed (for example, 101's WSL):
+To upgrade a pinned 0.2.2 installation, install the new tag on the machine where pi runs.
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b3
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b1
 ```
 
 To follow `main` instead, replace the pinned source once, then update packages as needed:
@@ -83,6 +84,8 @@ For persistent pi sessions, normalized objects live under `.dcp-assets/` beside 
 `dcp-session pi2dsh` writes valid attachment references to `DSH_HOME` (default `~/.dsh`) and keeps the byte-exact pi archive. Foreign DSH imports read that same attachment store and replay offloads before embedding retained images into pi; missing assets fail explicitly. The legacy synchronous core codec has no automatic attachment resolution; use the CLI for image sessions.
 
 ## Configuration
+
+Use `/dcp-summary-model` while pi is idle to see the current default and pick a model. The command saves `summarizationProvider` and `summarizationModel` in the project's `.pi/dcp.json` and reloads pi. The active conversation model continues to handle the conversation. Choose **Auto** or run `/dcp-summary-model reset` to let DSH prefer the last model that answered, then the current request model. Exact `modelPolicies` overrides take precedence and are preserved when changing or resetting the project default. `/dcp-status` shows the default and whether such overrides exist.
 
 Optional `.pi/dcp.json`:
 
@@ -137,11 +140,13 @@ npm run test:package   # package, isolated install, copied-source rebuild, pi in
 
 Differential tests compare the adapter with direct upstream Cordis plugin execution: summary input/budget, logical selected spans, prune/replace events, final surfaces, no-op/failure results, flush checkpoints and retry decisions. Runtime IDs/timestamps and host-specific seed offsets are excluded. Other tests cover real TypeBox tool schemas, usage pricing, durability, branches, Ctrl+O, cancellation, scope rejection and input rejection. Provider replies are deterministic stubs; paid live-model fidelity benchmarks are not implied.
 
-The distributable is `dsh-compact-pi-0.2.2-b3.tgz`. It can be installed with `npm install ./dsh-compact-pi-0.2.2-b3.tgz`, followed by `pi install /absolute/path/to/node_modules/dsh-compact-pi`. It contains the copied source closure and built extension.
+The distributable is `dsh-compact-pi-0.2.3-b1.tgz`. It can be installed with `npm install ./dsh-compact-pi-0.2.3-b1.tgz`, followed by `pi install /absolute/path/to/node_modules/dsh-compact-pi`. It contains the copied source closure and built extension.
 
-For npm/Git publication, version tags and public installation instructions, see [the publishing guide](docs/publishing.md). Release notes are in [CHANGELOG.md](CHANGELOG.md).
+See [testing](docs/testing.md), [publishing](docs/publishing.md), and [release notes](CHANGELOG.md).
 
 ## Session conversion
+
+See [usage and troubleshooting](docs/help.md) for configuration examples, migration steps and recovery checks. Run `dcp-session --help` for the CLI synopsis.
 
 ```bash
 dcp-session dsh2pi old.dsh.jsonl imported.pi.jsonl
@@ -150,7 +155,11 @@ dcp-session pi2dsh session.pi.jsonl exported.dsh.jsonl
 dcp --session old.dsh.jsonl
 ```
 
-The launcher imports into a new pi file and preserves the source DSH file. Pi-origin exports retain exact pi entries in ignorable `plugin:dcp/pi-header` and `plugin:dcp/pi-entry` records, including legacy `plugin:zcp` records on import. Foreign DSH imports use their active message surface; DSH-only UI state and attachment-store references are not a complete pi session translation. `.zstd` reading requires the `zstd` command; compressed writing is unsupported.
+The converter uses the DSH session format of the pinned upstream snapshot in `vendor/manifest.json`. Its pi-to-DSH export gives DSH the active branch after native context edits, compaction and DCP journal replay. The export also archives the original pi entries, including other branches and metadata, in ignorable `plugin:dcp/pi-header` and `plugin:dcp/pi-entry` records.
+
+Importing an unchanged export restores the original pi entries. For a native DSH session, or an export whose context has since changed in DSH, the converter imports the live DSH context as a new linear pi session. Keep the source files if you want access to the original branch tree, plugin state or full event history. Pass a separate output path. Reading compressed DSH logs requires the `zstd` command.
+
+`npm run test:resume -- <pi-version>` checks both directions through the CLI, including resuming in pi after adding a message in DSH. The full test suite also exercises a checkpoint created by the upstream DSH engine and retained or offloaded image attachments.
 
 If an old v0.1 core codec patch is installed, export needed sessions and restore it with `node scripts/patch-pi.mjs --restore` before using the normal extension. See [migration details](docs/native-session-codec.md).
 

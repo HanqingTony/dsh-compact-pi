@@ -4,7 +4,7 @@ import type {
   ExtensionContext,
 } from '@earendil-works/pi-coding-agent'
 import { DshBridge } from './bridge.ts'
-import { loadConfig } from './config.ts'
+import { loadConfig, saveSummaryModel, summaryModelLabel } from './config.ts'
 import { describeSummary } from './compaction-info.ts'
 
 export default function dcp(pi: ExtensionAPI): void {
@@ -106,6 +106,54 @@ export default function dcp(pi: ExtensionAPI): void {
     description: 'Show DSH compaction policy and current branch checkpoints',
     handler: async (_args, ctx) => {
       ctx.ui.notify(bridge?.status() ?? 'dcp: not initialized', 'info')
+    },
+  })
+  pi.registerCommand('dcp-summary-model', {
+    description: 'Choose or reset the project default model for DCP summaries',
+    handler: async (args, ctx) => {
+      const active = bridge
+      if (!active) {
+        ctx.ui.notify('dcp: not initialized', 'warning')
+        return
+      }
+      const option = args.trim()
+      if (option && option !== 'reset') {
+        ctx.ui.notify('Usage: /dcp-summary-model [reset]', 'warning')
+        return
+      }
+      const status = active.summaryModelStatus()
+      if (!option && !ctx.hasUI) {
+        ctx.ui.notify(status, 'info')
+        return
+      }
+      if (!ctx.isIdle() || active.isCompacting) {
+        ctx.ui.notify('dcp: change the summary model while the agent is idle', 'warning')
+        return
+      }
+      let model: { provider: string; id: string } | undefined
+      if (!option) {
+        const models = new Map(ctx.modelRegistry.getAvailable()
+          .filter((candidate) => candidate.api !== 'pi-virtual')
+          .map((candidate) => [`${candidate.provider}/${candidate.id}`, candidate]))
+        const auto = 'Auto (restore upstream selection)'
+        const choice = await ctx.ui.select(status, [auto, ...[...models.keys()].sort()])
+        if (choice === undefined) return
+        model = models.get(choice)
+        if (!model && choice !== auto) return
+      }
+      if (bridge !== active || !ctx.isIdle() || active.isCompacting) return
+      try {
+        await saveSummaryModel(ctx.cwd, model)
+      } catch (error) {
+        ctx.ui.notify(`dcp: could not save summary model: ${String(error)}`, 'error')
+        return
+      }
+      const label = summaryModelLabel(model ? {
+        summarizationProvider: model.provider,
+        summarizationModel: model.id,
+      } : {})
+      ctx.ui.notify(`dcp: saved summary model default: ${label}`, 'info')
+      if (bridge === active && ctx.isIdle() && !active.isCompacting) await ctx.reload()
     },
   })
   pi.registerCommand('dcp-compact', {

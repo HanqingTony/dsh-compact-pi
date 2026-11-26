@@ -1,7 +1,7 @@
 {
   "name": "dsh-compact-pi",
-  "version": "0.2.2-b3",
-  "dcpVersion": "0.2.2b3",
+  "version": "0.2.3-b1",
+  "dcpVersion": "0.2.3b1",
   "type": "module",
   "description": "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
   "repository": {
@@ -26,6 +26,7 @@
     "vendor:dsh": "node scripts/vendor-dsh.mjs",
     "check": "npm run typecheck && npm run build && npm test",
     "test:package": "node scripts/smoke-package.mjs",
+    "test:resume": "npm run build && node scripts/test-resume.mjs",
     "vendor:verify": "node scripts/check-vendor.mjs --upstream"
   },
   "pi": {
@@ -72,7 +73,7 @@
     "tag": "beta"
   },
   "engines": {
-    "node": ">=24.9.0"
+    "node": "^24.22.3 || >=26.13.1"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",

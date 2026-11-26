@@ -3,12 +3,12 @@
 import { promises as fs } from 'node:fs'
 import * as path from 'node:path'
 import type { Session } from '../../vendor/dsh-runtime.mjs'
-import { createSession, restoreSession } from './session.ts'
+import { createSession, DSH_FORMAT_VERSION, restoreSession } from './session.ts'
 import { createSyncState, syncPiEntries } from './sync.ts'
 import { openImageBridge } from './images.ts'
 import { projectSurface } from './projection.ts'
 import { readDshFile } from './store.ts'
-import { writeDshFromPi, archivedPi } from '../codec.ts'
+import { writeDshFromPi, archivedPi, projectPiForDsh } from '../codec.ts'
 import type { PiMessage } from './messages.ts'
 
 export interface PiSessionFile {
@@ -25,6 +25,8 @@ export async function readPiSession(file: string): Promise<PiSessionFile> {
   const header = rows.shift()
   if (header?.type !== 'session')
     throw new Error(`${file}: not a pi session header`)
+  if (header.version === DSH_FORMAT_VERSION || rows.some((row) => 'seq' in row))
+    throw new Error(`${file}: contains DSH events; expected a native pi session`)
   return { header, entries: rows }
 }
 
@@ -96,15 +98,16 @@ export async function piToDsh(
   input: string,
   output: string,
 ): Promise<ConvertReport> {
+  if (path.resolve(input) === path.resolve(output))
+    throw new Error('Choose a separate output file for session conversion')
   const pi = await readPiSession(input)
+  const projected = projectPiForDsh(pi.entries)
   const carrier = await openImageBridge()
   try {
     await carrier.images.prepare(
-      pi.entries
-        .filter((entry) => entry.type === 'message')
-        .map((entry) => entry.message),
+      projected.map((entry) => entry.message),
     )
-    writeDshFromPi(output, pi.header, pi.entries, carrier.images.toDsh)
+    writeDshFromPi(output, pi.header, pi.entries, carrier.images.toDsh, projected)
   } finally {
     await carrier.close()
   }
@@ -121,6 +124,8 @@ export async function dshToPi(
   input: string,
   output: string,
 ): Promise<ConvertReport> {
+  if (path.resolve(input) === path.resolve(output))
+    throw new Error('Choose a separate output file for session conversion')
   const dsh = await readDshFile(input)
   if (!dsh) throw new Error(`${input}: not a DSH session file`)
   const archived = archivedPi(dsh.header, dsh.events)
@@ -169,6 +174,7 @@ export async function dshToPi(
 
 export async function dshSessionFromPiFile(input: string): Promise<Session> {
   const pi = await readPiSession(input)
+  const projected = projectPiForDsh(pi.entries)
   const id = String(pi.header.id ?? path.basename(input, '.jsonl'))
   const { session } = createSession(
     id,
@@ -178,11 +184,9 @@ export async function dshSessionFromPiFile(input: string): Promise<Session> {
   const carrier = await openImageBridge()
   try {
     await carrier.images.prepare(
-      pi.entries
-        .filter((entry) => entry.type === 'message')
-        .map((entry) => entry.message),
+      projected.map((entry) => entry.message),
     )
-    syncPiEntries(session, pi.entries, createSyncState(), {
+    syncPiEntries(session, projected, createSyncState(), {
       systemPrompt: '',
       imageToDsh: carrier.images.toDsh,
     })

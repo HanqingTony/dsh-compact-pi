@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.3-b1]
+
+- Export the active pi branch and its effective compressed context to DSH. Keep the original pi entries for unchanged round trips and import the live DSH surface after a session continues there.
+- Add `/dcp-summary-model` to choose or reset the project default summary model and show the setting in `/dcp-status`.
+- Sync the unmodified DeepSeek Harness `0.2.3-alpha.2` source snapshot (`4b399c39`).
+- Adapt pi image limits to the upstream attachment encoder's separate hard byte limit and preferred size. Both use the same pi limit or the existing 1 MiB default.
+- Use the upstream summary route projection, which prefers the last model that answered when no summary model is configured.
+- Match the upstream Node.js requirement: `^24.22.3 || >=26.13.1`.
+- Add an automated pi 1.5.2 and 1.6.0 resume and migration matrix, along with CLI help and maintenance documentation.
+
 ## [0.2.2-b3]
 
 - Update the upstream DeepSeek Harness source snapshot to `0.2.2-rc.5` (`9c2670d3`), including shared error handling and session updates.
