@@ -1,12 +1,12 @@
 # DCP usage and troubleshooting
 
-Install the [tagged release](https://github.com/HanqingTony/dsh-compact-pi/releases/tag/v0.2.3-b1) with:
+Install the [tagged release](https://github.com/HanqingTony/dsh-compact-pi/releases/tag/v0.2.3-b2) with:
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b1
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b2
 ```
 
-Restart pi or run `/reload` while idle. `/dcp-status` should show DCP `0.2.3b1` and DSH `0.2.3-alpha.2`. DCP is tested with pi 1.5.2 and 1.6.0 and needs Node.js `^24.22.3 || >=26.13.1`. Check `pi list` for duplicate installations if commands or warnings appear twice. See the [update instructions](../README.md#updating-an-existing-installation) for pinned tags and branch installs.
+Restart pi or run `/reload` while idle. `/dcp-status` should show DCP `0.2.3b2` and DSH `0.2.3-alpha.2`. DCP is tested with pi 1.5.2 and 1.6.0 and needs Node.js `^24.22.3 || >=26.13.1`. Check `pi list` for duplicate installations if commands or warnings appear twice. See the [update instructions](../README.md#updating-an-existing-installation) for pinned tags and branch installs.
 
 ## Compaction and model selection
 

@@ -30631,8 +30631,8 @@ var SessionProjectionRegistry = class extends Service {
 // package.json
 var package_default = {
   name: "dsh-compact-pi",
-  version: "0.2.3-b1",
-  dcpVersion: "0.2.3b1",
+  version: "0.2.3-b2",
+  dcpVersion: "0.2.3b2",
   type: "module",
   description: "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
   repository: {

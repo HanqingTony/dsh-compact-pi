@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.3-b2]
+
+- Correct the lockfile integrity for `@aws/lambda-invoke-store@0.2.2` so a clean `npm ci` can install the development dependencies.
+- Includes the summary model picker, bidirectional session migration, and pi compatibility tests introduced in 0.2.3b1.
+
 ## [0.2.3-b1]
 
 - Export the active pi branch and its effective compressed context to DSH. Keep the original pi entries for unchanged round trips and import the live DSH surface after a session continues there.
