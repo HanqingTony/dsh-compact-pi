@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.2-b3]
+
+- Update the upstream DeepSeek Harness source snapshot to `0.2.2-rc.5` (`9c2670d3`), including shared error handling and session updates.
+- Bundle the upstream-pinned Zod `4.6.6`. The existing pi adapter works with the new snapshot without source patches.
+
 ## [0.2.2-b2]
 
 - Fix Esc during an ordinary tool call being reported as a DCP extension error even when no compaction occurred. Pi can invoke the context hook with an already-aborted signal after a tool returns; DCP now skips maintenance in that hook.

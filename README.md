@@ -2,12 +2,12 @@
 
 An installable pi extension hosting **unmodified DeepSeek Harness compaction plugins in real Cordis**. DCP adapts a defined common subset of pi and DSH; its source updater copies upstream files without rewriting imports or patching the compression algorithm.
 
-Requires pi 1.5.2 and Node.js >=24.9.0 (matching the upstream source runtime requirement). DCP's version uses the upstream DSH base version plus its own build number: currently **0.2.2b2** (DSH base 0.2.2, DCP build 2). The npm SemVer is `0.2.2-b2`; `/dcp-status` and Ctrl+O display `0.2.2b2`. Subsequent DCP builds increment `b3`, `b4`, etc., independently of the upstream snapshot. The exact DSH snapshot is 0.2.2-rc.1, pinned in [vendor/manifest.json](vendor/manifest.json) and shown separately by `/dcp-status`. Running or building DCP does not require a DSH checkout.
+Requires pi 1.5.2 and Node.js >=24.9.0 (matching the upstream source runtime requirement). DCP's version uses the upstream DSH base version plus its own build number: currently **0.2.2b3** (DSH base 0.2.2, DCP build 3). The npm SemVer is `0.2.2-b3`; `/dcp-status` and Ctrl+O display `0.2.2b3`. Subsequent DCP builds increment `b4`, `b5`, etc., independently of the upstream snapshot. The exact DSH snapshot is 0.2.2-rc.5, pinned in [vendor/manifest.json](vendor/manifest.json) and shown separately by `/dcp-status`. Running or building DCP does not require a DSH checkout.
 
 ## Install and use
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b2
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b3
 ```
 
 Restart pi or `/reload`, then `/dcp-status`. The Git tag pins this release. To follow future releases on the default branch, use `pi install git:github.com/HanqingTony/dsh-compact-pi`. Before switching from a local DCP installation, use `pi list` and `pi remove <old-source>` to remove the old package entry and avoid loading DCP twice. To install a development checkout, use `pi install /absolute/path/to/dsh-compact-pi`. For one run:
@@ -32,15 +32,15 @@ In pi 1.5.2, `pi update` alone updates **pi itself**. Use `pi update --extension
 
 | Installed source | Update behavior |
 |---|---|
-| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b1` | Pinned to b1; package updates do not advance it to b2 |
-| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b2` | Pinned to b2; package updates do not select a future release |
+| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b1` | Pinned to b1; package updates do not advance it to b3 |
+| `git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b3` | Pinned to b3; package updates do not select a future release |
 | `git:github.com/HanqingTony/dsh-compact-pi` | Follows the default branch (`main`), including changes between tagged releases |
 | Local checkout | Uses local files; pi does not fetch a new release for that path |
 
-To upgrade a pinned b1 installation to the Esc cancellation fix in b2, run on the machine where pi is installed (for example, 101's WSL):
+To upgrade a pinned b1 or b2 installation to b3, run on the machine where pi is installed (for example, 101's WSL):
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b2
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.2-b3
 ```
 
 To follow `main` instead, replace the pinned source once, then update packages as needed:
@@ -137,7 +137,7 @@ npm run test:package   # package, isolated install, copied-source rebuild, pi in
 
 Differential tests compare the adapter with direct upstream Cordis plugin execution: summary input/budget, logical selected spans, prune/replace events, final surfaces, no-op/failure results, flush checkpoints and retry decisions. Runtime IDs/timestamps and host-specific seed offsets are excluded. Other tests cover real TypeBox tool schemas, usage pricing, durability, branches, Ctrl+O, cancellation, scope rejection and input rejection. Provider replies are deterministic stubs; paid live-model fidelity benchmarks are not implied.
 
-The distributable is `dsh-compact-pi-0.2.2-b2.tgz`. It can be installed with `npm install ./dsh-compact-pi-0.2.2-b2.tgz`, followed by `pi install /absolute/path/to/node_modules/dsh-compact-pi`. It contains the copied source closure and built extension.
+The distributable is `dsh-compact-pi-0.2.2-b3.tgz`. It can be installed with `npm install ./dsh-compact-pi-0.2.2-b3.tgz`, followed by `pi install /absolute/path/to/node_modules/dsh-compact-pi`. It contains the copied source closure and built extension.
 
 For npm/Git publication, version tags and public installation instructions, see [the publishing guide](docs/publishing.md). Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
