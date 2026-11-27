@@ -1,5 +1,7 @@
 # Generated upstream code contains intentional whitespace in runtime templates.
-dist/* -whitespace
-vendor/dsh-runtime.mjs -whitespace
-# Byte-for-byte upstream sources retain their original whitespace.
+dist/* -text -whitespace
+vendor/dsh-runtime.mjs -text -whitespace
+# Byte-for-byte snapshots are validated by SHA-256.
+vendor/pi-messages.mjs -text
+vendor/pi-session-projection.mjs -text
 vendor/dsh-source/** -text -whitespace
