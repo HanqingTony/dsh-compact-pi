@@ -4,7 +4,9 @@ import assert from 'node:assert/strict'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { zstdDecompressSync } from 'node:zlib'
 import { dshToPi, piToDsh, readPiSession } from '../src/dsh/convert.ts'
+import { importPiToDsh } from '../src/dsh/import.ts'
 import { readDshFile } from '../src/dsh/store.ts'
 
 const long = (label: string) => `${label} `.repeat(200)
@@ -19,7 +21,7 @@ const piRows = [
     version: 3,
     id: 'convert-test',
     timestamp: new Date().toISOString(),
-    cwd: '/tmp',
+    cwd: path.join(dir, '项目'),
   },
   {
     type: 'message',
@@ -70,6 +72,29 @@ const back = await readPiSession(backFile)
 assert.equal(back.entries.length, 2)
 assert.equal(back.entries[0].message.role, 'user')
 assert.equal(back.entries[1].message.role, 'assistant')
+
+function sessionRows(bytes: Buffer) {
+  return bytes.toString('utf8').trimEnd().split('\n').map((line) => {
+    const { time: _time, ...row } = JSON.parse(line)
+    return row
+  })
+}
+
+for (const plain of [false, true]) {
+  const root = path.join(dir, plain ? 'plain' : 'zstd')
+  const imported = await importPiToDsh(piFile, root, plain)
+  assert.equal(imported.sessionId, piRows[0].id)
+  assert.equal(imported.cwd, piRows[0].cwd)
+  assert.match(path.basename(path.dirname(path.dirname(imported.output))), /~9879~76EE--$/)
+  const bytes = await fs.readFile(imported.output)
+  assert.deepEqual(
+    sessionRows(plain ? bytes : zstdDecompressSync(bytes)),
+    sessionRows(await fs.readFile(dshFile)),
+  )
+  await assert.rejects(importPiToDsh(piFile, root, plain), /session already exists/)
+  await assert.rejects(importPiToDsh(piFile, root, !plain), /different encoding/)
+  assert.deepEqual(await fs.readFile(imported.output), bytes)
+}
 
 console.log('convert ok', {
   dshEvents: dsh!.events.length,

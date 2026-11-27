@@ -2,4 +2,4 @@
 dist/* -whitespace
 vendor/dsh-runtime.mjs -whitespace
 # Byte-for-byte upstream sources retain their original whitespace.
-vendor/dsh-source/** -whitespace
+vendor/dsh-source/** -text -whitespace

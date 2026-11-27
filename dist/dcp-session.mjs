@@ -486,9 +486,9 @@ function createShadow(useSite, target, property2, receiver) {
 }
 function createShadowMethod(ctx, value, outer, shadow) {
   return new Proxy(value, {
-    apply: (target, thisArg, args) => {
+    apply: (target, thisArg, args2) => {
       if (thisArg === outer) thisArg = shadow;
-      return getTraceable(ctx, Reflect.apply(target, thisArg, args));
+      return getTraceable(ctx, Reflect.apply(target, thisArg, args2));
     }
   });
 }
@@ -537,21 +537,21 @@ function createTraceable(ctx, value, tracker) {
       const shadow = createShadow(useSite, target, tracker.property, receiver);
       return Reflect.set(target, prop, value2, shadow);
     },
-    apply: (target, thisArg, args) => {
+    apply: (target, thisArg, args2) => {
       const receiver = tracker.noShadow ? proxy : createShadow(useSite, target, tracker.property, proxy);
-      return applyTraceable(receiver, target, thisArg, args);
+      return applyTraceable(receiver, target, thisArg, args2);
     }
   });
   return proxy;
 }
-function applyTraceable(proxy, value, thisArg, args) {
-  if (!value[symbols.invoke]) return Reflect.apply(value, thisArg, args);
-  return value[symbols.invoke].apply(proxy, args);
+function applyTraceable(proxy, value, thisArg, args2) {
+  if (!value[symbols.invoke]) return Reflect.apply(value, thisArg, args2);
+  return value[symbols.invoke].apply(proxy, args2);
 }
 function createCallable(name2, proto, tracker) {
-  const self = function(...args) {
+  const self = function(...args2) {
     const proxy = createTraceable(self["ctx"], self, tracker);
-    return Reflect.apply(proxy, this, args);
+    return Reflect.apply(proxy, this, args2);
   };
   defineProperty(self, "name", name2);
   return Object.setPrototypeOf(self, proto);
@@ -629,8 +629,8 @@ var ValidationError = class _ValidationError extends TypeError {
    * @param path — the standard-schema issue path; segments may be `{ key }` objects.
    * @returns the property keys, or an empty array when the issue has no path.
    */
-  static normalizePath(path3 = []) {
-    return path3.map((segment) => typeof segment === "object" ? segment.key : segment);
+  static normalizePath(path4 = []) {
+    return path4.map((segment) => typeof segment === "object" ? segment.key : segment);
   }
   /**
    * Format an issue path as a dotted string.
@@ -638,8 +638,8 @@ var ValidationError = class _ValidationError extends TypeError {
    * @param path — the standard-schema issue path.
    * @returns the keys joined with `.`.
    */
-  static formatPath(path3) {
-    return _ValidationError.normalizePath(path3).map(String).join(".");
+  static formatPath(path4) {
+    return _ValidationError.normalizePath(path4).map(String).join(".");
   }
 };
 Object.defineProperty(ValidationError.prototype, kValidationError, {
@@ -663,17 +663,17 @@ function runDisposable(dispose) {
   return effectInertia.get(dispose)?.() ?? result;
 }
 function emitPluginDisposed(context, fiber) {
-  const args = ["internal/plugin", fiber];
+  const args2 = ["internal/plugin", fiber];
   let callbacks;
   try {
-    callbacks = context.events.dispatch("emit", args);
+    callbacks = context.events.dispatch("emit", args2);
   } catch (error62) {
     context.logger.error(error62);
     return;
   }
   for (const callback of callbacks) {
     try {
-      const returned = callback(...args);
+      const returned = callback(...args2);
       void Promise.resolve(returned).catch((error62) => context.logger.error(error62));
     } catch (error62) {
       context.logger.error(error62);
@@ -1257,11 +1257,11 @@ var EventsService = class {
   }
   ctx;
   _hooks = /* @__PURE__ */ Object.create(null);
-  _resolve(type, args) {
-    const thisArg = typeof args[0] === "object" || typeof args[0] === "function" ? args.shift() : null;
-    const name2 = args.shift();
+  _resolve(type, args2) {
+    const thisArg = typeof args2[0] === "object" || typeof args2[0] === "function" ? args2.shift() : null;
+    const name2 = args2.shift();
     if ((typeof name2 !== "string" || !name2.startsWith("internal/")) && this._hooks["internal/dispatch"]?.length) {
-      this.emit("internal/dispatch", type, name2, args, thisArg);
+      this.emit("internal/dispatch", type, name2, args2, thisArg);
     }
     const filter = thisArg?.[Context.filter];
     const callbacks = (this._hooks[name2] || []).filter((hook) => hook.global || !filter || filter.call(thisArg, hook.ctx)).map((hook) => hook.callback);
@@ -1274,8 +1274,8 @@ var EventsService = class {
    * @returns Matching callbacks bound to the dispatch receiver.
    * DSH retains callback enumeration for per-listener error containment.
    */
-  dispatch(type, args) {
-    const [thisArg, callbacks] = this._resolve(type, args);
+  dispatch(type, args2) {
+    const [thisArg, callbacks] = this._resolve(type, args2);
     return callbacks.map((callback) => callback.bind(thisArg));
   }
   /**
@@ -1284,9 +1284,9 @@ var EventsService = class {
    * @param args — optional `this`, the event name, then listener arguments.
    * @returns a promise resolving once every listener has settled.
    */
-  async parallel(...args) {
-    const [thisArg, callbacks, name2] = this._resolve("parallel", args);
-    const results = await Promise.allSettled(callbacks.map(async (callback) => Reflect.apply(callback, thisArg, args)));
+  async parallel(...args2) {
+    const [thisArg, callbacks, name2] = this._resolve("parallel", args2);
+    const results = await Promise.allSettled(callbacks.map(async (callback) => Reflect.apply(callback, thisArg, args2)));
     const errors = results.filter((result) => result.status === "rejected");
     if (!errors.length) return;
     const label = typeof name2 === "symbol" ? String(name2) : `"${name2}"`;
@@ -1297,9 +1297,9 @@ var EventsService = class {
    *
    * @param args — optional `this`, the event name, then listener arguments.
    */
-  emit(...args) {
-    const [thisArg, callbacks] = this._resolve("emit", args);
-    for (const callback of callbacks) Reflect.apply(callback, thisArg, args);
+  emit(...args2) {
+    const [thisArg, callbacks] = this._resolve("emit", args2);
+    for (const callback of callbacks) Reflect.apply(callback, thisArg, args2);
   }
   /**
    * Run listeners in order, awaiting each, until one returns a bail value.
@@ -1307,10 +1307,10 @@ var EventsService = class {
    * @param args — optional `this`, the event name, then listener arguments.
    * @returns the first bail value (see {@link isBailed}), if any.
    */
-  async serial(...args) {
-    const [thisArg, callbacks] = this._resolve("serial", args);
+  async serial(...args2) {
+    const [thisArg, callbacks] = this._resolve("serial", args2);
     for (const callback of callbacks) {
-      const result = await Reflect.apply(callback, thisArg, args);
+      const result = await Reflect.apply(callback, thisArg, args2);
       if (isBailed(result)) return result;
     }
   }
@@ -1320,10 +1320,10 @@ var EventsService = class {
    * @param args — optional `this`, the event name, then listener arguments.
    * @returns the first bail value (see {@link isBailed}), if any.
    */
-  bail(...args) {
-    const [thisArg, callbacks] = this._resolve("bail", args);
+  bail(...args2) {
+    const [thisArg, callbacks] = this._resolve("bail", args2);
     for (const callback of callbacks) {
-      const result = Reflect.apply(callback, thisArg, args);
+      const result = Reflect.apply(callback, thisArg, args2);
       if (isBailed(result)) return result;
     }
   }
@@ -1337,9 +1337,9 @@ var EventsService = class {
    * @param args — optional `this`, the event name, listener arguments, then `next`.
    * @returns the outermost listener's return value.
    */
-  waterfall(...args) {
-    const [thisArg, callbacks] = this._resolve("waterfall", args);
-    const inner = args.pop();
+  waterfall(...args2) {
+    const [thisArg, callbacks] = this._resolve("waterfall", args2);
+    const inner = args2.pop();
     const dispatch = () => {
       const callback = callbacks.shift();
       if (!callback) return inner();
@@ -1349,7 +1349,7 @@ var EventsService = class {
         called = true;
         return dispatch();
       };
-      return Reflect.apply(callback, thisArg, [...args, next]);
+      return Reflect.apply(callback, thisArg, [...args2, next]);
     };
     return dispatch();
   }
@@ -1402,9 +1402,9 @@ var EventsService = class {
    * @returns a disposer removing the listener; `true` if it was still registered.
    */
   once(name2, listener, options) {
-    const dispose = this.on(name2, function(...args) {
+    const dispose = this.on(name2, function(...args2) {
       dispose();
-      return listener.apply(this, args);
+      return listener.apply(this, args2);
     }, options);
     return dispose;
   }
@@ -1689,11 +1689,11 @@ var ReflectService = class {
    */
   bind(callback) {
     return new Proxy(callback, {
-      apply: (target, thisArg, args) => {
-        return Reflect.apply(target, this.trace(thisArg), args.map((arg) => this.trace(arg)));
+      apply: (target, thisArg, args2) => {
+        return Reflect.apply(target, this.trace(thisArg), args2.map((arg) => this.trace(arg)));
       },
-      construct: (target, args, newTarget) => {
-        return Reflect.construct(target, args.map((arg) => this.trace(arg)), newTarget);
+      construct: (target, args2, newTarget) => {
+        return Reflect.construct(target, args2.map((arg) => this.trace(arg)), newTarget);
       }
     });
   }
@@ -1857,25 +1857,25 @@ var Logger = class {
     return colors[Math.abs(hash2) % colors.length];
   }
   static format(exporter, message) {
-    const args = message.args.slice();
-    if (args[0] instanceof Error) {
-      args[0] = args[0].stack || args[0].message;
-      args.unshift("%s");
-    } else if (typeof args[0] !== "string") {
-      args.unshift("%o");
+    const args2 = message.args.slice();
+    if (args2[0] instanceof Error) {
+      args2[0] = args2[0].stack || args2[0].message;
+      args2.unshift("%s");
+    } else if (typeof args2[0] !== "string") {
+      args2.unshift("%o");
     }
-    let format = args.shift();
+    let format = args2.shift();
     format = format.replace(/%([a-zA-Z%])/g, (match, char) => {
       if (match === "%%") return "%";
       const formatter = exporter.formatters?.[char] ?? defaultFormatters[char];
       if (typeof formatter === "function") {
-        const value = args.shift();
+        const value = args2.shift();
         return formatter(value, exporter, message);
       }
       return match;
     });
     const oFormatter = exporter.formatters?.o ?? defaultFormatters.o;
-    for (let arg of args) {
+    for (let arg of args2) {
       if (typeof arg === "object" && arg) {
         arg = oFormatter(arg, exporter, message);
       }
@@ -1887,12 +1887,12 @@ var Logger = class {
     }).join("\n");
   }
   _method(type, level) {
-    return (...args) => {
-      if (args.length === 1 && args[0] instanceof Error) {
-        if (args[0].cause) {
-          this[type](args[0].cause);
-        } else if (isAggregateError(args[0]) && args[0].errors.length) {
-          args[0].errors.forEach((error62) => this[type](error62));
+    return (...args2) => {
+      if (args2.length === 1 && args2[0] instanceof Error) {
+        if (args2[0].cause) {
+          this[type](args2[0].cause);
+        } else if (isAggregateError(args2[0]) && args2[0].errors.length) {
+          args2[0].errors.forEach((error62) => this[type](error62));
           return;
         }
       }
@@ -1901,7 +1901,7 @@ var Logger = class {
       for (const exporter of this.service.exporters.values()) {
         const targetLevel = exporter.levels?.[this.name] ?? exporter.levels?.default ?? this.level ?? 2;
         if (targetLevel < level) continue;
-        const message = { sn, ts, type, level, name: this.name, ...this.meta, args };
+        const message = { sn, ts, type, level, name: this.name, ...this.meta, args: args2 };
         exporter.export(message);
       }
     };
@@ -2043,8 +2043,8 @@ var LoggerService = class _LoggerService {
   static {
     for (const type of ["error", "info", "warn", "debug"]) {
       ;
-      _LoggerService.prototype[type] = function(...args) {
-        return this()[type](...args);
+      _LoggerService.prototype[type] = function(...args2) {
+        return this()[type](...args2);
       };
     }
   }
@@ -2853,9 +2853,9 @@ var PartialArguments = class _PartialArguments {
       if (remaining[0] === "\\" && type === void 0 && entry.end < 0) return;
       if (remaining[0] === "\\" && type === "u") {
         const hex3 = this.slice(read.at + 2, Math.min(end, read.at + 6));
-        let valid = true;
-        for (let i = 0; i < hex3.length; i++) if (!isHex(hex3[i])) valid = false;
-        if (valid) {
+        let valid2 = true;
+        for (let i = 0; i < hex3.length; i++) if (!isHex(hex3[i])) valid2 = false;
+        if (valid2) {
           if (hex3.length < 4 && entry.end < 0) return;
           if (hex3.length === 4) decoded = String.fromCharCode(Number.parseInt(hex3, 16));
         }
@@ -3328,10 +3328,10 @@ var EXCEEDS_MODEL_CONTEXT = new RegExp(
   "i"
 );
 function errorChain(value) {
-  const path3 = /* @__PURE__ */ new Set();
+  const path4 = /* @__PURE__ */ new Set();
   const render = (current) => {
-    if (path3.has(current)) return "<circular cause>";
-    path3.add(current);
+    if (path4.has(current)) return "<circular cause>";
+    path4.add(current);
     try {
       if (!(current instanceof Error)) {
         if (typeof current === "object" && current !== null) {
@@ -3350,7 +3350,7 @@ function errorChain(value) {
     } catch {
       return "<unrenderable value>";
     } finally {
-      path3.delete(current);
+      path4.delete(current);
     }
   };
   return render(value);
@@ -3656,25 +3656,25 @@ Schema.prototype.volatile = function volatile() {
 };
 var resolvers = {};
 var checkedVolatile = /* @__PURE__ */ Symbol("checked-volatile-schema");
-function validateVolatileSchema(schema, path3 = [], blocked = false, seen = /* @__PURE__ */ new Map()) {
+function validateVolatileSchema(schema, path4 = [], blocked = false, seen = /* @__PURE__ */ new Map()) {
   const states = seen.get(schema) ?? /* @__PURE__ */ new Set();
   if (states.has(blocked)) return;
   states.add(blocked);
   seen.set(schema, states);
   if (schema.meta?.volatile && blocked) {
-    throw new ValidationError2("volatile fields require a fixed object path without an enclosing volatile field", { path: path3 });
+    throw new ValidationError2("volatile fields require a fixed object path without an enclosing volatile field", { path: path4 });
   }
   const nested = blocked || !!schema.meta?.volatile;
   if (schema.dict) {
-    for (const [key, child] of Object.entries(schema.dict)) validateVolatileSchema(child, [...path3, key], nested, seen);
+    for (const [key, child] of Object.entries(schema.dict)) validateVolatileSchema(child, [...path4, key], nested, seen);
   }
-  if (schema.sKey) validateVolatileSchema(schema.sKey, [...path3, "<key>"], true, seen);
+  if (schema.sKey) validateVolatileSchema(schema.sKey, [...path4, "<key>"], true, seen);
   if (schema.inner && (schema.type !== "lazy" || schema.inner[kSchema])) {
-    validateVolatileSchema(schema.inner, [...path3, "*"], true, seen);
+    validateVolatileSchema(schema.inner, [...path4, "*"], true, seen);
   }
   if (schema.list) {
     for (let index = 0; index < schema.list.length; index++) {
-      validateVolatileSchema(schema.list[index], [...path3, String(index)], true, seen);
+      validateVolatileSchema(schema.list[index], [...path4, String(index)], true, seen);
     }
   }
 }
@@ -4006,37 +4006,37 @@ var formatters = {};
 function defineMethod(name2, keys, format) {
   formatters[name2] = format;
   Object.assign(Schema, {
-    [name2](...args) {
+    [name2](...args2) {
       const schema = new Schema({ type: name2 });
       keys.forEach((key, index) => {
         switch (key) {
           case "sKey":
-            schema.sKey = args[index] ?? Schema.string();
+            schema.sKey = args2[index] ?? Schema.string();
             break;
           case "inner":
-            schema.inner = Schema.from(args[index]);
+            schema.inner = Schema.from(args2[index]);
             break;
           case "list":
-            schema.list = args[index].map(Schema.from);
+            schema.list = args2[index].map(Schema.from);
             break;
           case "dict":
-            schema.dict = mapValues(args[index], Schema.from);
+            schema.dict = mapValues(args2[index], Schema.from);
             break;
           case "bits": {
             schema.bits = {};
-            for (const key2 in args[index]) {
-              if (typeof args[index][key2] !== "number") continue;
-              schema.bits[key2] = args[index][key2];
+            for (const key2 in args2[index]) {
+              if (typeof args2[index][key2] !== "number") continue;
+              schema.bits[key2] = args2[index][key2];
             }
             break;
           }
           case "callback": {
-            const callback = schema.callback = args[index];
+            const callback = schema.callback = args2[index];
             callback["toJSON"] ||= () => callback.toString();
             break;
           }
           case "constructor": {
-            const constructor = schema.constructor = args[index];
+            const constructor = schema.constructor = args2[index];
             if (typeof constructor === "function") {
               ;
               constructor["toJSON"] ||= () => constructor["name"];
@@ -4044,7 +4044,7 @@ function defineMethod(name2, keys, format) {
             break;
           }
           default:
-            schema[key] = args[index];
+            schema[key] = args2[index];
         }
       });
       if (name2 === "object" || name2 === "dict") {
@@ -4137,71 +4137,71 @@ var ALWAYS_POLICY_KEYS = /* @__PURE__ */ new Set([
   "backoff"
 ]);
 var BACKOFF_KEYS = /* @__PURE__ */ new Set(["initialDelayMs", "maxDelayMs", "jitterRatio"]);
-function validateKeys(value, allowed, path3) {
+function validateKeys(value, allowed, path4) {
   for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) throw new Error(`${path3}: unknown key "${key}"`);
+    if (!allowed.has(key)) throw new Error(`${path4}: unknown key "${key}"`);
   }
 }
-function resolveBackoff(config2, path3) {
-  if (config2 !== void 0) validateKeys(config2, BACKOFF_KEYS, path3);
+function resolveBackoff(config2, path4) {
+  if (config2 !== void 0) validateKeys(config2, BACKOFF_KEYS, path4);
   const initialDelayMs = config2?.initialDelayMs ?? DEFAULT_INITIAL_DELAY_MS;
   const maxDelayMs = config2?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
   const jitterRatio = config2?.jitterRatio ?? DEFAULT_JITTER_RATIO;
   if (!Number.isFinite(initialDelayMs) || initialDelayMs <= 0 || initialDelayMs > MAX_TIMER_DELAY_MS) {
-    throw new Error(`${path3}.initialDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+    throw new Error(`${path4}.initialDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
   }
   if (!Number.isFinite(maxDelayMs) || maxDelayMs <= 0 || maxDelayMs > MAX_TIMER_DELAY_MS) {
-    throw new Error(`${path3}.maxDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+    throw new Error(`${path4}.maxDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
   }
   if (initialDelayMs > maxDelayMs) {
-    throw new Error(`${path3}.initialDelayMs must be less than or equal to maxDelayMs`);
+    throw new Error(`${path4}.initialDelayMs must be less than or equal to maxDelayMs`);
   }
   if (!Number.isFinite(jitterRatio) || jitterRatio < 0 || jitterRatio > 1) {
-    throw new Error(`${path3}.jitterRatio must be between 0 and 1`);
+    throw new Error(`${path4}.jitterRatio must be between 0 and 1`);
   }
   return Object.freeze({ initialDelayMs, maxDelayMs, jitterRatio });
 }
-function resolveRetryPolicy(config2, path3) {
+function resolveRetryPolicy(config2, path4) {
   if (config2 === void 0) {
     return Object.freeze({
       mode: "normal",
       maxRetries: DEFAULT_MAX_RETRIES,
       retryableCodes: DEFAULT_RETRYABLE_CODES,
-      ...resolveBackoff(void 0, `${path3}.backoff`)
+      ...resolveBackoff(void 0, `${path4}.backoff`)
     });
   }
   switch (config2.mode) {
     case "normal": {
-      validateKeys(config2, NORMAL_POLICY_KEYS, path3);
+      validateKeys(config2, NORMAL_POLICY_KEYS, path4);
       const maxRetries = config2.maxRetries ?? DEFAULT_MAX_RETRIES;
       const retryableCodes = config2.retryableCodes ?? [...DEFAULT_RETRYABLE_CODES];
       if (!Number.isSafeInteger(maxRetries) || maxRetries < 0) {
-        throw new Error(`${path3}.maxRetries must be a non-negative safe integer`);
+        throw new Error(`${path4}.maxRetries must be a non-negative safe integer`);
       }
       if (retryableCodes.length === 0) {
-        throw new Error(`${path3}.retryableCodes must not be empty`);
+        throw new Error(`${path4}.retryableCodes must not be empty`);
       }
       if (retryableCodes.some((code) => typeof code !== "string" || code.length === 0)) {
-        throw new Error(`${path3}.retryableCodes must contain only non-empty strings`);
+        throw new Error(`${path4}.retryableCodes must contain only non-empty strings`);
       }
       if (new Set(retryableCodes).size !== retryableCodes.length) {
-        throw new Error(`${path3}.retryableCodes must not contain duplicates`);
+        throw new Error(`${path4}.retryableCodes must not contain duplicates`);
       }
       return Object.freeze({
         mode: "normal",
         maxRetries,
         retryableCodes: Object.freeze([...retryableCodes]),
-        ...resolveBackoff(config2.backoff, `${path3}.backoff`)
+        ...resolveBackoff(config2.backoff, `${path4}.backoff`)
       });
     }
     case "always":
-      validateKeys(config2, ALWAYS_POLICY_KEYS, path3);
+      validateKeys(config2, ALWAYS_POLICY_KEYS, path4);
       return Object.freeze({
         mode: "always",
-        ...resolveBackoff(config2.backoff, `${path3}.backoff`)
+        ...resolveBackoff(config2.backoff, `${path4}.backoff`)
       });
     default:
-      throw new Error(`${path3}.mode must be "normal" or "always"`);
+      throw new Error(`${path4}.mode must be "normal" or "always"`);
   }
 }
 function callConfigEquals(a, b) {
@@ -5245,8 +5245,8 @@ var LlmRuntime = class extends (_a = TypertRemoteService, _listProviders_dec = [
       return void 0;
     }
     if (hostPath === void 0) return void 0;
-    const fs3 = this.ctx.get("fs");
-    return fs3?.processPathFromHostPath(hostPath);
+    const fs4 = this.ctx.get("fs");
+    return fs4?.processPathFromHostPath(hostPath);
   }
   /**
    * Final adapter boundary. Adapter selection, dispatch, iterator construction,
@@ -5649,10 +5649,10 @@ var DEFAULT_AGENTS_HOME_DISPLAY = `~/${AGENTS_HOME_DIR_NAME}`;
 function defaultDshHome() {
   return join(homedir(), DSH_HOME_DIR_NAME);
 }
-function expandHomePath(path3) {
-  if (path3 === "~") return homedir();
-  if (path3.startsWith("~/") || path3.startsWith("~\\")) return join(homedir(), path3.slice(2));
-  return path3;
+function expandHomePath(path4) {
+  if (path4 === "~") return homedir();
+  if (path4.startsWith("~/") || path4.startsWith("~\\")) return join(homedir(), path4.slice(2));
+  return path4;
 }
 function resolveRoot(configured, env, envName, fallback) {
   const fromEnv = env[envName];
@@ -5910,17 +5910,17 @@ async function prepareImageFile(input22, limits, policy) {
     }
   };
 }
-async function syncDirectory(path3) {
+async function syncDirectory(path4) {
   if (process.platform === "win32") return;
-  const handle = await open(path3, constants.O_RDONLY);
+  const handle = await open(path4, constants.O_RDONLY);
   try {
     await handle.sync();
   } finally {
     await handle.close();
   }
 }
-async function ensureDurableDirectory(path3, boundary) {
-  const target = resolve3(path3);
+async function ensureDurableDirectory(path4, boundary) {
+  const target = resolve3(path4);
   const stop = resolve3(boundary);
   await mkdir(target, { recursive: true, mode: 448 });
   await chmod(target, 448);
@@ -5932,8 +5932,8 @@ async function ensureDurableDirectory(path3, boundary) {
     level = parent;
   }
 }
-async function ensureDurableHome(path3) {
-  const home = resolve3(path3);
+async function ensureDurableHome(path4) {
+  const home = resolve3(path4);
   if (!durableHomes.has(home)) {
     await ensureDurableDirectory(home, parse(home).root);
     durableHomes.add(home);
@@ -6053,13 +6053,13 @@ async function publishStagedObject(root, target, staged) {
     throw new AttachmentError("Unable to persist attachment.", "ATTACHMENT_WRITE_FAILED", { cause: error62 });
   }
 }
-async function digestFile(path3) {
+async function digestFile(path4) {
   const hash2 = createHash("sha256");
-  for await (const chunk of createReadStream(path3)) hash2.update(chunk);
+  for await (const chunk of createReadStream(path4)) hash2.update(chunk);
   return hash2.digest("hex");
 }
-async function removeTemporary(path3) {
-  await unlink(path3).catch(
+async function removeTemporary(path4) {
+  await unlink(path4).catch(
     /* v8 ignore next -- Cleanup can observe a staging name already removed after successful linking. */
     (cleanupError) => {
       if (!(cleanupError instanceof Error && "code" in cleanupError && cleanupError.code === "ENOENT")) throw cleanupError;
@@ -6278,9 +6278,9 @@ async function createRequestImage(attachment, target, hasAlpha, policy, signal) 
 function cachePath(root, hash2) {
   return join4(root, "request-images", hash2.slice(0, 2), hash2);
 }
-async function readCached(path3, target, expectedAlpha, signal) {
+async function readCached(path4, target, expectedAlpha, signal) {
   try {
-    const data = new Uint8Array(await readFile2(path3, { signal }));
+    const data = new Uint8Array(await readFile2(path4, { signal }));
     if (data.byteLength > target.maxImageBytes) return void 0;
     const detected = await probeImage(data);
     if (detected.depth !== "uchar" || detected.space !== "srgb" || detected.width > target.width || detected.height > target.height || !encodedAlphaIsCompatible(expectedAlpha, detected)) return void 0;
@@ -6301,12 +6301,12 @@ async function verifyRequestImage(image, expectedAlpha) {
   }
   return { ...image, hasAlpha: detected.hasAlpha };
 }
-async function writeCached(path3, data) {
-  await mkdir2(dirname3(path3), { recursive: true, mode: 448 });
-  const temporary = `${path3}.${randomUUID3()}.tmp`;
+async function writeCached(path4, data) {
+  await mkdir2(dirname3(path4), { recursive: true, mode: 448 });
+  const temporary = `${path4}.${randomUUID3()}.tmp`;
   try {
     await writeFile(temporary, data, { mode: 384, flag: "wx" });
-    await rename(temporary, path3);
+    await rename(temporary, path4);
   } finally {
     await rm(temporary, { force: true });
   }
@@ -6317,12 +6317,12 @@ async function readRequestImageFile(root, attachment, target, policy, signal) {
   const source = await probeImage(attachment.data);
   const variantId = requestImageVariantId(attachment.ref, target, policy);
   const hash2 = String(variantId).slice("sha256:".length);
-  const path3 = cachePath(root, hash2);
-  const cached2 = await readCached(path3, target, source.hasAlpha, signal);
+  const path4 = cachePath(root, hash2);
+  const cached2 = await readCached(path4, target, source.hasAlpha, signal);
   const created = cached2 ?? await createRequestImage(attachment, target, source.hasAlpha, policy, signal);
   const version3 = cached2 ?? (created.data === attachment.data ? { ...created, hasAlpha: source.hasAlpha } : await verifyRequestImage(created, source.hasAlpha));
   signal?.throwIfAborted();
-  if (cached2 === void 0 && version3.data !== attachment.data) await writeCached(path3, version3.data);
+  if (cached2 === void 0 && version3.data !== attachment.data) await writeCached(path4, version3.data);
   return {
     variantId,
     attachment: attachment.ref,
@@ -7547,10 +7547,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path3) {
-  if (!path3)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path3.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7890,11 +7890,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path3, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a4;
     (_a4 = iss).path ?? (_a4.path = []);
-    iss.path.unshift(path3);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -7994,8 +7994,8 @@ function parsedType(data) {
   }
   return t;
 }
-function issue(...args) {
-  const [iss, input22, inst] = args;
+function issue(...args2) {
+  const [iss, input22, inst] = args2;
   if (typeof iss === "string") {
     return {
       message: iss,
@@ -8352,16 +8352,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path3 = []) => {
+  const processError = (error63, path4 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else {
-        const fullpath = [...path3, ...issue2.path];
+        const fullpath = [...path4, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8400,17 +8400,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path3 = []) => {
+  const processError = (error63, path4 = []) => {
     var _a4;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else {
-        const fullpath = [...path3, ...issue2.path];
+        const fullpath = [...path4, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -8449,8 +8449,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path3 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path3) {
+  const path4 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path4) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -8752,20 +8752,20 @@ function anchor(source) {
   return new RegExp(`^${source}$`);
 }
 var date2 = /* @__PURE__ */ anchor(dateSource);
-function timeSource(args) {
+function timeSource(args2) {
   const hhmm = `(?:[01]\\d|2[0-3]):[0-5]\\d`;
-  const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : args.seconds ? `${hhmm}:[0-5]\\d(?:\\.\\d+)?` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
+  const regex = typeof args2.precision === "number" ? args2.precision === -1 ? `${hhmm}` : args2.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args2.precision}}` : args2.seconds ? `${hhmm}:[0-5]\\d(?:\\.\\d+)?` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
   return regex;
 }
-function time(args) {
-  return new RegExp(`^${timeSource(args)}$`);
+function time(args2) {
+  return new RegExp(`^${timeSource(args2)}$`);
 }
-function datetime(args) {
+function datetime(args2) {
   const opts = ["Z"];
-  if (args.offset)
+  if (args2.offset)
     opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
-  const qualified = `${timeSource({ precision: args.precision, seconds: true })}(?:${opts.join("|")})`;
-  const timeRegex = args.local ? `${qualified}|${timeSource({ precision: args.precision })}` : qualified;
+  const qualified = `${timeSource({ precision: args2.precision, seconds: true })}(?:${opts.join("|")})`;
+  const timeRegex = args2.local ? `${qualified}|${timeSource({ precision: args2.precision })}` : qualified;
   return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
 }
 var anyString = /^[\s\S]{0,}$/;
@@ -9278,10 +9278,10 @@ var $ZodCheckOverwrite = /* @__PURE__ */ $constructor("$ZodCheckOverwrite", (ins
   };
 });
 var Doc = class {
-  constructor(args = [], closed = {}) {
+  constructor(args2 = [], closed = {}) {
     this.content = [];
     this.indent = 0;
-    this.args = args;
+    this.args = args2;
     this.closed = closed;
   }
   // the compiler catches a child's throw and keeps writing into this doc, so the indent has to unwind with it
@@ -11636,8 +11636,8 @@ var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
     if (typeof func !== "function") {
       throw new Error("implement() must be called with a function");
     }
-    return Object.defineProperty(function(...args) {
-      const parsedArgs = inst._def.input ? parse2(inst._def.input, args) : args;
+    return Object.defineProperty(function(...args2) {
+      const parsedArgs = inst._def.input ? parse2(inst._def.input, args2) : args2;
       const result = Reflect.apply(func, this, parsedArgs);
       if (inst._def.output) {
         return parse2(inst._def.output, result);
@@ -11649,8 +11649,8 @@ var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
     if (typeof func !== "function") {
       throw new Error("implementAsync() must be called with a function");
     }
-    return Object.defineProperty(async function(...args) {
-      const parsedArgs = inst._def.input ? await parseAsync(inst._def.input, args) : args;
+    return Object.defineProperty(async function(...args2) {
+      const parsedArgs = inst._def.input ? await parseAsync(inst._def.input, args2) : args2;
       const result = await Reflect.apply(func, this, parsedArgs);
       if (inst._def.output) {
         return await parseAsync(inst._def.output, result);
@@ -11676,22 +11676,22 @@ var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
     }
     return payload;
   };
-  inst.input = (...args) => {
+  inst.input = (...args2) => {
     const F = inst.constructor;
-    if (Array.isArray(args[0])) {
+    if (Array.isArray(args2[0])) {
       return new F({
         type: "function",
         input: new $ZodTuple({
           type: "tuple",
-          items: args[0],
-          rest: args[1]
+          items: args2[0],
+          rest: args2[1]
         }),
         output: inst._def.output
       });
     }
     return new F({
       type: "function",
-      input: args[0],
+      input: args2[0],
       output: inst._def.output
     });
   };
@@ -23900,11 +23900,11 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
     globalRegistry.add(cl, { description });
     return cl;
   },
-  meta(...args) {
-    if (args.length === 0)
+  meta(...args2) {
+    if (args2.length === 0)
       return globalRegistry.get(this);
     const cl = this.clone();
-    globalRegistry.add(cl, args[0]);
+    globalRegistry.add(cl, args2[0]);
     return cl;
   },
   isOptional() {
@@ -23913,8 +23913,8 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   isNullable() {
     return this.safeParse(null).success;
   },
-  apply(fn, ...args) {
-    return args.length === 0 ? fn(this) : fn(this, ...args);
+  apply(fn, ...args2) {
+    return args2.length === 0 ? fn(this) : fn(this, ...args2);
   },
   // Overrides core's `~standard` to add `jsonSchema`. Must stay a prototype entry: redefining it per instance demotes instances to dictionary mode.
   get "~standard"() {
@@ -24002,29 +24002,29 @@ var _ZodString = /* @__PURE__ */ $constructor(
     minLength: (inst) => aggregateChecks(inst).minimum ?? null,
     maxLength: (inst) => aggregateChecks(inst).maximum ?? null
   }, {
-    regex(...args) {
-      return this.check(/* @__PURE__ */ _regex(...args));
+    regex(...args2) {
+      return this.check(/* @__PURE__ */ _regex(...args2));
     },
-    includes(...args) {
-      return this.check(/* @__PURE__ */ _includes(...args));
+    includes(...args2) {
+      return this.check(/* @__PURE__ */ _includes(...args2));
     },
-    startsWith(...args) {
-      return this.check(/* @__PURE__ */ _startsWith(...args));
+    startsWith(...args2) {
+      return this.check(/* @__PURE__ */ _startsWith(...args2));
     },
-    endsWith(...args) {
-      return this.check(/* @__PURE__ */ _endsWith(...args));
+    endsWith(...args2) {
+      return this.check(/* @__PURE__ */ _endsWith(...args2));
     },
-    min(...args) {
-      return this.check(/* @__PURE__ */ _minLength(...args));
+    min(...args2) {
+      return this.check(/* @__PURE__ */ _minLength(...args2));
     },
-    max(...args) {
-      return this.check(/* @__PURE__ */ _maxLength(...args));
+    max(...args2) {
+      return this.check(/* @__PURE__ */ _maxLength(...args2));
     },
-    length(...args) {
-      return this.check(/* @__PURE__ */ _length(...args));
+    length(...args2) {
+      return this.check(/* @__PURE__ */ _length(...args2));
     },
-    nonempty(...args) {
-      return this.check(/* @__PURE__ */ _minLength(1, ...args));
+    nonempty(...args2) {
+      return this.check(/* @__PURE__ */ _minLength(1, ...args2));
     },
     lowercase(params) {
       return this.check(/* @__PURE__ */ _lowercase(params));
@@ -24035,8 +24035,8 @@ var _ZodString = /* @__PURE__ */ $constructor(
     trim() {
       return this.check(/* @__PURE__ */ _trim());
     },
-    normalize(...args) {
-      return this.check(/* @__PURE__ */ _normalize(...args));
+    normalize(...args2) {
+      return this.check(/* @__PURE__ */ _normalize(...args2));
     },
     toLowerCase() {
       return this.check(/* @__PURE__ */ _toLowerCase());
@@ -24658,14 +24658,14 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   omit(mask) {
     return util_exports.omit(this, mask);
   },
-  partial(...args) {
-    return util_exports.partial(ZodOptional, this, args[0]);
+  partial(...args2) {
+    return util_exports.partial(ZodOptional, this, args2[0]);
   },
-  exactPartial(...args) {
-    return util_exports.partial(ZodExactOptional, this, args[0], "exactPartial");
+  exactPartial(...args2) {
+    return util_exports.partial(ZodExactOptional, this, args2[0], "exactPartial");
   },
-  required(...args) {
-    return util_exports.required(ZodNonOptional, this, args[0]);
+  required(...args2) {
+    return util_exports.required(ZodNonOptional, this, args2[0]);
   }
 });
 function object(shape, params) {
@@ -24825,10 +24825,10 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   inst._zod.processJSONSchema = (ctx, json2, params) => mapProcessor(inst, ctx, json2, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
-  inst.min = (...args) => inst.check(/* @__PURE__ */ _minSize(...args));
+  inst.min = (...args2) => inst.check(/* @__PURE__ */ _minSize(...args2));
   inst.nonempty = (params) => inst.check(/* @__PURE__ */ _minSize(1, params));
-  inst.max = (...args) => inst.check(/* @__PURE__ */ _maxSize(...args));
-  inst.size = (...args) => inst.check(/* @__PURE__ */ _size(...args));
+  inst.max = (...args2) => inst.check(/* @__PURE__ */ _maxSize(...args2));
+  inst.size = (...args2) => inst.check(/* @__PURE__ */ _size(...args2));
 });
 function map(keyType, valueType, params) {
   return new ZodMap({
@@ -24843,10 +24843,10 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
   inst._zod.processJSONSchema = (ctx, json2, params) => setProcessor(inst, ctx, json2, params);
-  inst.min = (...args) => inst.check(/* @__PURE__ */ _minSize(...args));
+  inst.min = (...args2) => inst.check(/* @__PURE__ */ _minSize(...args2));
   inst.nonempty = (params) => inst.check(/* @__PURE__ */ _minSize(1, params));
-  inst.max = (...args) => inst.check(/* @__PURE__ */ _maxSize(...args));
-  inst.size = (...args) => inst.check(/* @__PURE__ */ _size(...args));
+  inst.max = (...args2) => inst.check(/* @__PURE__ */ _maxSize(...args2));
+  inst.size = (...args2) => inst.check(/* @__PURE__ */ _size(...args2));
 });
 function set2(valueType, params) {
   return new ZodSet({
@@ -25252,11 +25252,11 @@ function _instanceof(cls, params = {}) {
   };
   return inst;
 }
-var stringbool = (...args) => /* @__PURE__ */ _stringbool({
+var stringbool = (...args2) => /* @__PURE__ */ _stringbool({
   Codec: ZodCodec,
   Boolean: ZodBoolean,
   String: ZodString
-}, ...args);
+}, ...args2);
 function json(params) {
   const jsonSchema = lazy2(() => {
     return union([string2(params), number2(), boolean2(), _null3(), array(jsonSchema), record(string2(), jsonSchema)]);
@@ -25416,13 +25416,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path3 = ref.slice(1).split("/").filter(Boolean);
-  if (path3.length === 0) {
+  const path4 = ref.slice(1).split("/").filter(Boolean);
+  if (path4.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path3[0] === defsKey) {
-    const key = path3[1] === void 0 ? void 0 : decodeJSONPointerSegment(path3[1]);
+  if (path4[0] === defsKey) {
+    const key = path4[1] === void 0 ? void 0 : decodeJSONPointerSegment(path4[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27475,13 +27475,13 @@ function checkSessionLog(id, header, seed, inheritedEventCount, mode, events, su
     inheritedEventCount: validateInheritedCut(checkedHeader, seed !== void 0, inheritedEventCount, events, mode)
   };
 }
-function collectSessionCallbacks(ctx, args) {
-  return [...ctx.events.dispatch("emit", args)];
+function collectSessionCallbacks(ctx, args2) {
+  return [...ctx.events.dispatch("emit", args2)];
 }
-function invokeContainedSessionObservers(ctx, name2, id, args, callbacks) {
+function invokeContainedSessionObservers(ctx, name2, id, args2, callbacks) {
   for (const callback of callbacks) {
     try {
-      const returned = callback(...args);
+      const returned = callback(...args2);
       void Promise.resolve(returned).catch((error62) => {
         ctx.logger.warn(`session "${id}": ${name2} listener rejected: ${String(error62)}`);
       });
@@ -27705,17 +27705,17 @@ var Session = class _Session {
     if (entry !== void 0) entry.appending = true;
     try {
       const publications = entry === void 0 ? [] : events.map((event) => {
-        const args = [this, event];
-        const callbacks = collectSessionCallbacks(entry.emitCtx, [entry.carrier, "session/event", ...args]);
-        return { event, args, callbacks };
+        const args2 = [this, event];
+        const callbacks = collectSessionCallbacks(entry.emitCtx, [entry.carrier, "session/event", ...args2]);
+        return { event, args: args2, callbacks };
       });
       for (const event of events) this.log.push(event);
       this.eventsSnapshot = void 0;
       acceptSurface();
       if (entry !== void 0) {
-        for (const { event, args, callbacks } of publications) {
+        for (const { event, args: args2, callbacks } of publications) {
           this.batchPublication = event;
-          invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, args, callbacks);
+          invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, args2, callbacks);
         }
       }
     } finally {
@@ -29591,17 +29591,17 @@ function dshContentToPi(content, imageToPi) {
         });
         break;
       case "tool-call": {
-        let args = {};
+        let args2 = {};
         try {
-          args = JSON.parse(String(block.arguments ?? "{}"));
+          args2 = JSON.parse(String(block.arguments ?? "{}"));
         } catch {
-          args = {};
+          args2 = {};
         }
         out.push({
           type: "toolCall",
           id: String(block.id ?? ""),
           name: String(block.name ?? ""),
-          arguments: args
+          arguments: args2
         });
         break;
       }
@@ -30295,19 +30295,19 @@ function buildSessionPath(entries, leafId, byId) {
   if (!leaf) {
     return [];
   }
-  const path3 = [];
+  const path4 = [];
   let current = leaf;
   while (current) {
-    path3.push(current);
+    path4.push(current);
     current = current.parentId ? index.get(current.parentId) : void 0;
   }
-  path3.reverse();
-  return path3;
+  path4.reverse();
+  return path4;
 }
-function getSessionContextSettings(path3) {
+function getSessionContextSettings(path4) {
   let thinkingLevel = "off";
   let model = null;
-  for (const entry of path3) {
+  for (const entry of path4) {
     if (entry.type === "thinking_level_change") {
       thinkingLevel = entry.thinkingLevel;
     } else if (entry.type === "model_change") {
@@ -30343,24 +30343,24 @@ function sessionEntryToContextMessages(entry) {
   return [];
 }
 function buildContextEntries(entries, leafId, byId) {
-  const path3 = buildSessionPath(entries, leafId, byId);
+  const path4 = buildSessionPath(entries, leafId, byId);
   let compaction = null;
-  for (const entry of path3) {
+  for (const entry of path4) {
     if (entry.type === "compaction") {
       compaction = entry;
     }
   }
   if (!compaction) {
-    return path3;
+    return path4;
   }
-  const compactionIdx = path3.findIndex((entry) => entry.id === compaction.id);
+  const compactionIdx = path4.findIndex((entry) => entry.id === compaction.id);
   if (compactionIdx < 0) {
-    return path3;
+    return path4;
   }
   const contextEntries = [compaction];
   let foundFirstKept = false;
   for (let i = 0; i < compactionIdx; i++) {
-    const entry = path3[i];
+    const entry = path4[i];
     if (entry.id === compaction.firstKeptEntryId) {
       foundFirstKept = true;
     }
@@ -30368,7 +30368,7 @@ function buildContextEntries(entries, leafId, byId) {
       contextEntries.push(entry);
     }
   }
-  contextEntries.push(...path3.slice(compactionIdx + 1));
+  contextEntries.push(...path4.slice(compactionIdx + 1));
   return contextEntries;
 }
 function projectContextEntry(entry, edit) {
@@ -30387,8 +30387,8 @@ function projectContextEntry(entry, edit) {
   });
 }
 function buildSessionProjection(entries, leafId, byId) {
-  const path3 = buildSessionPath(entries, leafId, byId);
-  const { thinkingLevel, model } = getSessionContextSettings(path3);
+  const path4 = buildSessionPath(entries, leafId, byId);
+  const { thinkingLevel, model } = getSessionContextSettings(path4);
   const contextEntries = buildContextEntries(entries, leafId, byId);
   const edits = /* @__PURE__ */ new Map();
   for (const entry of contextEntries) {
@@ -30652,29 +30652,106 @@ async function dshToPi(input3, output3) {
   return { input: input3, output: output3, messages: messages.length, events: dsh.events.length };
 }
 
+// src/dsh/import.ts
+import { promises as fs3 } from "node:fs";
+import { homedir as homedir2, tmpdir } from "node:os";
+import * as path3 from "node:path";
+import { promisify } from "node:util";
+import { constants as constants2, zstdCompress } from "node:zlib";
+var compress = promisify(zstdCompress);
+var zstdOptions = { params: { [constants2.ZSTD_c_checksumFlag]: 1 } };
+function escapeSegment(value) {
+  return value.replace(
+    /[^A-Za-z0-9._-]/g,
+    (char) => "~" + char.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")
+  );
+}
+function projectKey(cwd) {
+  const readable = escapeSegment(cwd.replace(/[/\\:]+/g, "-")).replace(/^-+/, "");
+  return `--${(readable || "root").slice(0, 251)}--`;
+}
+async function importPiToDsh(input3, root = path3.join(process.env.DSH_HOME || path3.join(homedir2(), ".dsh"), "sessions"), plaintext = false) {
+  root = path3.resolve(root);
+  const stage = await fs3.mkdtemp(path3.join(tmpdir(), "dcp-import-"));
+  try {
+    const raw = path3.join(stage, "session.jsonl");
+    const report = await piToDsh(input3, raw);
+    const bytes = await fs3.readFile(raw);
+    const headerEnd = bytes.indexOf(10) + 1;
+    const header = JSON.parse(bytes.subarray(0, headerEnd).toString("utf8"));
+    if (header.version !== DSH_FORMAT_VERSION || !header.id || !header.cwd || !path3.isAbsolute(header.cwd))
+      throw new Error("Import requires a native pi session with an ID and an absolute local project path");
+    const id = header.id === "." || header.id === ".." ? header.id.replaceAll(".", "~002E") : escapeSegment(header.id);
+    for await (const existing of fs3.glob("*/*/session{,.v*}.jsonl{,.zstd}", { cwd: root })) {
+      const filename = path3.basename(existing);
+      if (!/^session(?:\.v[1-9]\d*)?\.jsonl(?:\.zstd)?$/.test(filename)) continue;
+      if (filename.endsWith(".zstd") === plaintext)
+        throw new Error(`DSH session root uses a different encoding: ${root}`);
+      if (path3.basename(path3.dirname(existing)) === id)
+        throw new Error(`DSH session already exists: ${header.id} (${path3.join(root, existing)})`);
+    }
+    const project = path3.join(root, projectKey(header.cwd));
+    const destination = path3.join(project, id);
+    const output3 = path3.join(destination, `session.v${header.version}.jsonl${plaintext ? "" : ".zstd"}`);
+    const stored = plaintext ? bytes : Buffer.concat(await Promise.all([
+      compress(bytes.subarray(0, headerEnd), zstdOptions),
+      compress(bytes.subarray(headerEnd), zstdOptions)
+    ]));
+    await fs3.mkdir(project, { recursive: true, mode: 448 });
+    try {
+      await fs3.mkdir(destination, { mode: 448 });
+    } catch (error62) {
+      if (error62.code === "EEXIST")
+        throw new Error(`DSH session already exists: ${header.id} (${destination})`);
+      throw error62;
+    }
+    const pending = path3.join(destination, ".dcp-import.tmp");
+    try {
+      await fs3.writeFile(pending, stored, { flag: "wx", mode: 384 });
+      await fs3.rename(pending, output3);
+    } catch (error62) {
+      await fs3.rm(pending, { force: true });
+      await fs3.rmdir(destination);
+      throw error62;
+    }
+    return { ...report, output: output3, sessionId: header.id, cwd: header.cwd };
+  } finally {
+    await fs3.rm(stage, { recursive: true, force: true });
+  }
+}
+
 // bin/dcp-session.ts
 var help = `Usage:
   dcp-session pi2dsh <pi-session.jsonl> <out.dsh.jsonl>
+  dcp-session pi2dsh-import <pi-session.jsonl> [dsh-session-root] [--plain]
   dcp-session dsh2pi <dsh-session.jsonl> <out.pi.jsonl>
   dcp-session --help
 
 pi2dsh exports the active pi context and archives the original pi entries.
+pi2dsh-import installs that export as a new DSH session. The default root is
+$DSH_HOME/sessions with Zstandard encoding. Use --plain only for a DSH profile
+configured with plaintext session storage.
 dsh2pi restores those entries from an unchanged export. For a native or
 continued DSH session it imports the active DSH context.
 
 Use a separate output path. DSH input may be .jsonl or .zstd (requires zstd).
 Image references are resolved under DSH_HOME (default ~/.dsh).`;
-var [command, input2, output2, ...extra2] = process.argv.slice(2);
+var [command, input2, ...args] = process.argv.slice(2);
 if (command === "--help" || command === "-h") {
   console.log(help);
   process.exit(0);
 }
-if (command !== "pi2dsh" && command !== "dsh2pi" || !input2 || !output2 || extra2.length) {
+var importing = command === "pi2dsh-import";
+var plain = importing && args.at(-1) === "--plain";
+if (plain) args.pop();
+var [output2, ...extra2] = args;
+var valid = importing ? !output2?.startsWith("--") : (command === "pi2dsh" || command === "dsh2pi") && output2 && extra2.length === 0;
+if (!input2 || !valid || extra2.length) {
   console.error(help);
   process.exit(2);
 }
 try {
-  const report = command === "pi2dsh" ? await piToDsh(input2, output2) : await dshToPi(input2, output2);
+  const report = importing ? await importPiToDsh(input2, output2, plain) : command === "pi2dsh" ? await piToDsh(input2, output2) : await dshToPi(input2, output2);
   console.log(JSON.stringify(report, null, 2));
 } catch (error62) {
   console.error(error62 instanceof Error ? error62.message : String(error62));

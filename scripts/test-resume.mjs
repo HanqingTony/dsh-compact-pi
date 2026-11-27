@@ -1,17 +1,18 @@
-/** Replay sessions produced by a released DCP bundle on a candidate pi host. */
+/** Exercise the packaged plugin and replay released sessions on a candidate pi host. */
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import sharp from 'sharp'
 import { Session, imageOffloadProjection } from '../vendor/dsh-runtime.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const piPackage = '@earendil-works/pi-coding-agent'
 const baselinePi = '1.5.2'
 const baselineRevision = '1f43099c0273a3edcbe5353a4aaf32884efd1fc9' // DCP 0.2.2b3
-const candidate = process.argv[2] ?? process.env.DCP_TEST_PI_VERSION ?? '1.6.0'
+const candidate = process.argv[2] ?? process.env.DCP_TEST_PI_VERSION ?? '1.6.1'
 assert.match(candidate, /^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/, 'Pass an exact pi version')
 const summary = 'DCP_RESUME_SUMMARY'
 const tail = 'DCP_RETAINED_TAIL'
@@ -22,7 +23,13 @@ const usage = {
   input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 }
-const dir = mkdtempSync(path.join(os.tmpdir(), 'dcp-pi-resume-'))
+const dir = process.env.DCP_TEST_WORK_DIR
+
+function npm(args, options) {
+  // npm.cmd cannot be launched directly by execFile on Windows.
+  assert.ok(process.env.npm_execpath, 'Run this test with npm run test:resume')
+  return execFileSync(process.execPath, [process.env.npm_execpath, ...args], options)
+}
 
 async function host(prefix, expectedVersion) {
   const packageDir = path.join(prefix, 'node_modules', piPackage)
@@ -35,15 +42,15 @@ async function host(prefix, expectedVersion) {
   return { ...sdk, ...ai }
 }
 
-async function run(pi, kind, extension, source, expected = []) {
+async function run(pi, kind, extension, { source, expected = [], manual = false, image } = {}) {
   const cwd = path.join(dir, kind)
   mkdirSync(path.join(cwd, '.pi'), { recursive: true })
   writeFileSync(path.join(cwd, '.pi/dcp.json'), JSON.stringify({
     audit: false,
-    policy: { auto: !source, headroomTokens: 512, retainTokens: 256, maxTokens: 1024 },
+    policy: { auto: !source && !manual, headroomTokens: 512, retainTokens: 256, maxTokens: 1024 },
   }))
   const settings = pi.SettingsManager.inMemory({
-    compaction: { enabled: false },
+    compaction: { enabled: false, keepRecentTokens: 256 },
     retry: { enabled: false },
   })
   const loader = new pi.DefaultResourceLoader({
@@ -64,7 +71,7 @@ async function run(pi, kind, extension, source, expected = []) {
   runtime.registerProvider('dcp-resume-test', {
     api: 'dcp-resume-test', apiKey: 'stub', baseUrl: 'https://unused.invalid',
     models: [{
-      id: 'stub', name: 'stub', reasoning: false, input: ['text'],
+      id: 'stub', name: 'stub', reasoning: false, input: ['text', 'image'],
       contextWindow: 8000, maxTokens: 1024, cost: usage.cost,
     }],
     streamSimple(model, context) {
@@ -87,12 +94,18 @@ async function run(pi, kind, extension, source, expected = []) {
     ? pi.SessionManager.open(source)
     : pi.SessionManager.create(cwd, cwd)
   const model = runtime.getModel('dcp-resume-test', 'stub')
+  const tailText = tail.repeat(80)
   if (!source) {
     manager.appendMessage({ role: 'user', content: oldHistory.repeat(2200), timestamp: 1 })
     manager.appendMessage({
       role: 'assistant', api: model.api, provider: model.provider, model: model.id,
       content: [{ type: 'text', text: 'Earlier answer' }], timestamp: 2, usage, stopReason: 'stop',
     })
+    if (manual) {
+      manager.appendMessage({
+        role: 'user', content: [{ type: 'text', text: tailText }, image], timestamp: 3,
+      })
+    }
   }
   const { session } = await pi.createAgentSession({
     cwd, agentDir: cwd, modelRuntime: runtime, model, sessionManager: manager,
@@ -101,7 +114,9 @@ async function run(pi, kind, extension, source, expected = []) {
   const errors = []
   try {
     await session.bindExtensions({ mode: 'print', onError: (error) => errors.push(error) })
-    await session.prompt(source ? next : tail.repeat(80))
+    if (manual) await session.compact()
+    const options = image && !source && !manual ? { images: [image] } : undefined
+    await session.prompt(source || manual ? next : tailText, options)
     assert.deepEqual(errors, [], `${kind}: extension errors`)
     const request = calls.at(-1)
     assert.ok(request && !request.isSummary, `${kind}: model request missing`)
@@ -111,30 +126,38 @@ async function run(pi, kind, extension, source, expected = []) {
     assert.ok(!input.includes(oldHistory), `${kind}: compacted prefix reappeared`)
     assert.ok(!input.includes('DCP_ABANDONED_BRANCH'), `${kind}: inactive branch leaked`)
     for (const marker of expected) assert.ok(input.includes(marker), `${kind}: ${marker} missing`)
-    if (source) {
-      assert.equal(calls.length, 1, `${kind}: recovery must reuse the existing summary`)
+    if (source || manual) {
       assert.equal(request.messages.at(-1)?.role, 'user')
       assert.ok(JSON.stringify(request.messages.at(-1)).includes(next), `${kind}: latest prompt missing`)
+    }
+    if (image) {
+      const images = request.messages.flatMap((message) =>
+        Array.isArray(message.content) ? message.content.filter((part) => part.type === 'image') : [],
+      )
+      assert.deepEqual(images, [image], `${kind}: retained image missing or changed`)
+    }
+    if (source) {
+      assert.equal(calls.length, 1, `${kind}: recovery must reuse the existing summary`)
     } else {
       assert.equal(calls.filter((call) => call.isSummary).length, 1)
-      return readFileSync(manager.getSessionFile(), 'utf8').trimEnd().split('\n')
+      return manager.getSessionFile()
     }
   } finally {
     session.dispose()
   }
 }
 
-function convert(command, input, output) {
-  execFileSync(process.execPath, [
-    path.join(root, 'dist/dcp-session.mjs'), command, input, output,
-  ], { env: { ...process.env, DSH_HOME: path.join(dir, 'dsh-home') } })
+function convert(cli, command, input, output) {
+  execFileSync(process.execPath, [cli, command, input, output], {
+    env: { ...process.env, DSH_HOME: path.join(dir, 'dsh-home') },
+  })
 }
 
-async function verifyMigration(pi, kind, extension, input, expected) {
+async function verifyMigration(pi, kind, { extension, cli }, input, expected) {
   const exportFile = path.join(dir, `${kind}.dsh.jsonl`)
   const roundTrip = path.join(dir, `${kind}-roundtrip.pi.jsonl`)
-  convert('pi2dsh', input, exportFile)
-  convert('dsh2pi', exportFile, roundTrip)
+  convert(cli, 'pi2dsh', input, exportFile)
+  convert(cli, 'dsh2pi', exportFile, roundTrip)
   const read = (file) => readFileSync(file, 'utf8').trimEnd().split('\n').map(JSON.parse)
   assert.deepEqual(read(roundTrip), read(input), `${kind}: pi archive round trip`)
 
@@ -157,11 +180,11 @@ async function verifyMigration(pi, kind, extension, input, expected) {
   }, { surfaceOp: 'append' })
   writeFileSync(exportFile, [header, ...dsh.snapshotEvents()].map(JSON.stringify).join('\n') + '\n')
   const returned = path.join(dir, `${kind}-continued.pi.jsonl`)
-  convert('dsh2pi', exportFile, returned)
-  await run(pi, `${kind}-after-dsh`, extension, returned, [continued, ...expected])
+  convert(cli, 'dsh2pi', exportFile, returned)
+  await run(pi, `${kind}-after-dsh`, extension, { source: returned, expected: [continued, ...expected] })
 }
 
-try {
+async function verify() {
   const baselinePackage = path.join(dir, 'baseline-package')
   for (const file of ['package.json', 'vendor/manifest.json', 'dist/index.js']) {
     const destination = path.join(baselinePackage, file)
@@ -173,7 +196,8 @@ try {
   const baselineExtension = path.join(baselinePackage, 'dist/index.js')
   symlinkSync(path.join(root, 'node_modules'), path.join(dir, 'node_modules'), 'junction')
   const baseline = await host(root, baselinePi)
-  const rows = await run(baseline, 'baseline', baselineExtension)
+  const baselineFile = await run(baseline, 'baseline', baselineExtension)
+  const rows = readFileSync(baselineFile, 'utf8').trimEnd().split('\n')
   const entries = rows.map((row) => JSON.parse(row))
   const journal = entries.findIndex((entry) =>
     entry.customType === 'dcp/transaction-v1' && entry.data?.info?.summaries > 0,
@@ -181,13 +205,39 @@ try {
   assert.ok(journal > 0, 'baseline did not persist a summary transaction')
   assert.ok(entries.slice(journal + 1).some((entry) => entry.type === 'compaction'),
     'baseline did not commit a native compaction')
+  const packed = JSON.parse(npm(
+    ['pack', '--json', '--ignore-scripts', '--pack-destination', dir], { cwd: root, encoding: 'utf8' },
+  ))
+  const [tarball] = Object.values(packed)
   const candidateDir = path.join(dir, 'candidate')
-  execFileSync('npm', [
+  npm([
     'install', '--prefix', candidateDir, '--no-audit', '--no-fund', '--ignore-scripts',
-    `${piPackage}@${candidate}`,
+    `${piPackage}@${candidate}`, path.join(dir, tarball.filename),
   ], { stdio: 'inherit' })
   const upgraded = await host(candidateDir, candidate)
-  const extension = path.join(root, 'dist/index.js')
+  const installed = path.join(candidateDir, 'node_modules/dsh-compact-pi')
+  const manifest = JSON.parse(readFileSync(path.join(installed, 'package.json'), 'utf8'))
+  const extension = path.join(installed, manifest.pi.extensions[0])
+  const cli = path.join(installed, manifest.bin['dcp-session'])
+  const image = {
+    type: 'image', mimeType: 'image/png',
+    data: (await sharp({
+      create: { width: 24, height: 16, channels: 3, background: 'red' },
+    }).png().toBuffer()).toString('base64'),
+  }
+  for (const [mode, trigger] of [['automatic', 'pressure'], ['manual', 'manual']]) {
+    const file = await run(upgraded, mode, extension, { image, manual: trigger === 'manual' })
+    const session = readFileSync(file, 'utf8').trimEnd().split('\n').map(JSON.parse)
+    const checkpoint = session.find((entry) => entry.type === 'compaction' && entry.summary.includes(summary))
+    assert.equal(checkpoint?.details?.engine, 'deepseek-harness', `${mode}: no DCP checkpoint persisted`)
+    assert.equal(checkpoint.details.dcp?.trigger, trigger)
+    const assets = readdirSync(path.join(path.dirname(file), '.dcp-assets'), {
+      recursive: true, withFileTypes: true,
+    })
+    assert.ok(assets.some((entry) => entry.isFile()), `${mode}: no image assets saved`)
+    await run(upgraded, `${mode}-reopen`, extension, { source: file, image })
+    console.log(`${process.platform}: pi ${candidate} ${mode} compaction and image resume passed`)
+  }
   for (const [kind, snapshot] of [['native', rows], ['journal-only', rows.slice(0, journal + 1)]]) {
     const file = path.join(dir, `${kind}.jsonl`)
     writeFileSync(file, snapshot.join('\n') + '\n')
@@ -210,10 +260,25 @@ try {
       }))
     }
     writeFileSync(migrationInput, migrationRows.join('\n') + '\n')
-    await verifyMigration(upgraded, kind, extension, migrationInput, expected)
-    await run(upgraded, kind, extension, file)
+    await verifyMigration(upgraded, kind, { extension, cli }, migrationInput, expected)
+    await run(upgraded, kind, extension, { source: file })
     console.log(`pi ${baselinePi} → ${candidate}: ${kind} resume and DSH round trip passed`)
   }
-} finally {
-  rmSync(dir, { recursive: true, force: true })
+}
+
+if (dir) {
+  await verify()
+} else {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'dcp-pi-resume-'))
+  try {
+    const result = spawnSync(process.execPath, [import.meta.filename, candidate], {
+      env: { ...process.env, DCP_TEST_WORK_DIR: temporary },
+      stdio: 'inherit',
+    })
+    if (result.error) throw result.error
+    process.exitCode = result.status ?? 1
+  } finally {
+    // Windows holds native modules open until the test process exits.
+    rmSync(temporary, { recursive: true, force: true, maxRetries: 5 })
+  }
 }

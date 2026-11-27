@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.3-b3]
+
+- Add `dcp-session pi2dsh-import` and the `dcp-migrate-to-dsh` skill. Import a selected Pi session directly into the DeepSeek Harness 0.2.3-alpha.2 store with its active summary, retained messages, images and archived Pi entries.
+- Check the packaged extension on Pi 1.6.1. Run automatic and manual image compaction, session resume and bidirectional migration on native Windows and Ubuntu in CI.
+- Make the CLI build and integration test runner work with Windows Node.js and preserve vendored source bytes across Git checkouts.
+
 ## [0.2.3-b2]
 
 - Correct the lockfile integrity for `@aws/lambda-invoke-store@0.2.2` so a clean `npm ci` can install the development dependencies.

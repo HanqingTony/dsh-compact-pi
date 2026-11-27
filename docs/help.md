@@ -9,10 +9,10 @@ pi install npm:dsh-compact-pi@latest
 Use the explicit tag while the npm release has a prerelease version. The GitHub tag is also available:
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b2
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b3
 ```
 
-Restart pi or run `/reload` while idle. `/dcp-status` should show DCP `0.2.3b2` and DSH `0.2.3-alpha.2`. DCP is tested with pi 1.5.2 and 1.6.0 and needs Node.js `^24.22.3 || >=26.13.1`. Check `pi list` for duplicate installations if commands or warnings appear twice. See the [update instructions](../README.md#updating-an-existing-installation) for pinned tags and branch installs.
+Restart pi or run `/reload` while idle. `/dcp-status` should show DCP `0.2.3b3` and DSH `0.2.3-alpha.2`. DCP is tested with pi 1.5.2 and 1.6.1 and needs Node.js `^24.22.3 || >=26.13.1`. Check `pi list` for duplicate installations if commands or warnings appear twice. See the [update instructions](../README.md#updating-an-existing-installation) for pinned tags and branch installs.
 
 ## Compaction and model selection
 
@@ -28,10 +28,15 @@ If a historical summary model is unavailable in pi, use the picker to select an 
 Use the CLI from the unpacked package or a development checkout with `node dist/dcp-session.mjs --help`. npm installs also expose the `dcp-session` command. Exit the active session or work from a copy and choose a separate output path.
 
 ```bash
+dcp-session pi2dsh-import session.pi.jsonl
 dcp-session pi2dsh session.pi.jsonl exported.dsh.jsonl
 dcp-session dsh2pi exported.dsh.jsonl imported.pi.jsonl
 pi --session imported.pi.jsonl
 ```
+
+`pi2dsh-import` writes a new session into the DSH 0.2.3-alpha.2 V4 store and prints its ID and working directory. Open it in DSH's session picker or run `dsh-tui --resume <session-id>` from that directory. The default store is `$DSH_HOME/sessions` with Zstandard encoding. Pass the configured session root as the second argument for a custom profile. Add `--plain` for profiles using plaintext JSONL. An existing session with the same ID and workspace is left intact.
+
+The package includes [dcp-migrate-to-dsh](../skills/dcp-migrate-to-dsh/SKILL.md). In Pi, request a migration using the skill or run `/skill:dcp-migrate-to-dsh`. To invoke it from DSH, copy its directory into `$DSH_HOME/skills` (default `~/.dsh/skills`). Both hosts need access to the converter and source file.
 
 The export archives pi entries, including the branch tree, and gives DSH the active compacted context. Reimporting an unchanged export restores the archived pi entries. Reimporting a session after continuing in DSH uses the live DSH context as a linear pi session. Keep the original file for its full history and host-specific metadata.
 

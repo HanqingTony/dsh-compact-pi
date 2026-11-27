@@ -8,7 +8,7 @@ on:
     inputs:
       pi_version:
         description: Exact candidate pi version to test
-        default: '1.6.0'
+        default: '1.6.1'
         type: string
 
 permissions:
@@ -16,15 +16,16 @@ permissions:
 
 jobs:
   resume:
-    name: Resume sessions on pi ${{ matrix.pi_version }}
-    runs-on: ubuntu-latest
+    name: Pi ${{ matrix.pi_version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         pi_version:
           - '1.5.2'
-          - "${{ inputs.pi_version || '1.6.0' }}"
+          - "${{ inputs.pi_version || '1.6.1' }}"
     env:
       DCP_TEST_PI_VERSION: ${{ matrix.pi_version }}
       PI_TELEMETRY: '0'
@@ -39,5 +40,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:resume
-      - if: matrix.pi_version == '1.5.2'
+      - if: matrix.os == 'ubuntu-latest' && matrix.pi_version == '1.5.2'
         run: node --import tsx --test test/differential.test.ts test/images-convert.test.ts

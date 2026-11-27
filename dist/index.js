@@ -30631,8 +30631,8 @@ var SessionProjectionRegistry = class extends Service {
 // package.json
 var package_default = {
   name: "dsh-compact-pi",
-  version: "0.2.3-b2",
-  dcpVersion: "0.2.3b2",
+  version: "0.2.3-b3",
+  dcpVersion: "0.2.3b3",
   type: "module",
   description: "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
   repository: {
@@ -30648,7 +30648,7 @@ var package_default = {
     build: "node scripts/check-vendor.mjs && node scripts/build-vendor.mjs && npm run build:plugin && npm run build:codec && npm run build:cli",
     "build:plugin": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --external:@earendil-works/pi-coding-agent",
     "build:codec": "esbuild src/codec.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/codec.mjs",
-    "build:cli": "esbuild bin/dcp-session.ts bin/dcp.ts --bundle --platform=node --format=esm --target=node22 --outdir=dist --out-extension:.js=.mjs --banner:js='#!/usr/bin/env node'",
+    "build:cli": 'esbuild bin/dcp-session.ts bin/dcp.ts --bundle --platform=node --format=esm --target=node22 --outdir=dist --out-extension:.js=.mjs --banner:js="#!/usr/bin/env node"',
     test: "tsx --test test/*.test.ts",
     convert: "node dist/dcp-session.mjs",
     unpatch: "node scripts/patch-pi.mjs --restore",
@@ -30661,6 +30661,7 @@ var package_default = {
     "vendor:verify": "node scripts/check-vendor.mjs --upstream"
   },
   pi: {
+    skills: ["./skills"],
     extensions: [
       "./dist/index.js"
     ]
@@ -30675,6 +30676,7 @@ var package_default = {
     "src",
     "bin",
     "scripts",
+    "skills",
     "docs",
     "README.md",
     "CHANGELOG.md",
