@@ -30631,8 +30631,8 @@ var SessionProjectionRegistry = class extends Service {
 // package.json
 var package_default = {
   name: "dsh-compact-pi",
-  version: "0.2.3-b3",
-  dcpVersion: "0.2.3b3",
+  version: "0.2.3-b4",
+  dcpVersion: "0.2.3b4",
   type: "module",
   description: "DeepSeek Harness context compaction for pi: upstream engine, policy, token meter and pruner",
   repository: {
@@ -34859,13 +34859,14 @@ function dshMessageToPi(message, time3, toolNames, imageToPi) {
 }
 
 // src/dsh/sync.ts
-function createSyncState() {
+function createSyncState({ persistent = false } = {}) {
   return {
     turn: 1,
     step: 0,
     turnStarted: false,
     systemSeq: void 0,
     stepOpen: false,
+    persistent,
     seen: /* @__PURE__ */ new Set(),
     toolCalls: /* @__PURE__ */ new Map(),
     appended: 0
@@ -34888,6 +34889,11 @@ function ensureTurn(session, state) {
 function appendSystem(session, state, entry, message, systemPrompt) {
   if (state.systemSeq !== void 0) return;
   ensureTurn(session, state);
+  if (state.persistent && !state.stepOpen) {
+    state.step += 1;
+    append(session, "step/start", { turn: state.turn, step: state.step });
+    state.stepOpen = true;
+  }
   let content = piContentToDsh(
     systemPrompt && systemPrompt.trim().length > 0 ? systemPrompt : typeof message.content === "string" ? message.content : []
   );

@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs'
 import * as path from 'node:path'
 import type { Session } from '../../vendor/dsh-runtime.mjs'
-import { createSession, DSH_FORMAT_VERSION, restoreSession } from './session.ts'
+import { createSession, DSH_FORMAT_VERSION, restoreSession, type DshHeader } from './session.ts'
 import { createSyncState, syncPiEntries } from './sync.ts'
 import { openImageBridge } from './images.ts'
 import { projectSurface } from './projection.ts'
@@ -101,20 +101,26 @@ export async function piToDsh(
   if (path.resolve(input) === path.resolve(output))
     throw new Error('Choose a separate output file for session conversion')
   const pi = await readPiSession(input)
+  return { input, output, ...await exportPiSession(pi, output) }
+}
+
+export async function exportPiSession(
+  pi: PiSessionFile,
+  output: string,
+  options: { dshHome?: string; destination?: Pick<DshHeader, 'id' | 'cwd'> } = {},
+) {
   const projected = projectPiForDsh(pi.entries)
-  const carrier = await openImageBridge()
+  const carrier = await openImageBridge(options.dshHome)
   try {
     await carrier.images.prepare(
       projected.map((entry) => entry.message),
     )
-    writeDshFromPi(output, pi.header, pi.entries, carrier.images.toDsh, projected)
+    writeDshFromPi(output, pi.header, pi.entries, carrier.images.toDsh, projected, options.destination)
   } finally {
     await carrier.close()
   }
   const parsed = await readDshFile(output)
   return {
-    input,
-    output,
     messages: pi.entries.filter((entry) => entry.type === 'message').length,
     events: parsed!.events.length,
   }

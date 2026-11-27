@@ -2,8 +2,10 @@
 
 import { dshToPi, piToDsh } from '../src/dsh/convert.ts'
 import { importPiToDsh } from '../src/dsh/import.ts'
+import { runMigration } from '../src/dsh/migration-cli.ts'
 
 const help = `Usage:
+  dcp-session migrate --help
   dcp-session pi2dsh <pi-session.jsonl> <out.dsh.jsonl>
   dcp-session pi2dsh-import <pi-session.jsonl> [dsh-session-root] [--plain]
   dcp-session dsh2pi <dsh-session.jsonl> <out.pi.jsonl>
@@ -19,30 +21,35 @@ continued DSH session it imports the active DSH context.
 Use a separate output path. DSH input may be .jsonl or .zstd (requires zstd).
 Image references are resolved under DSH_HOME (default ~/.dsh).`
 
-const [command, input, ...args] = process.argv.slice(2)
-if (command === '--help' || command === '-h') {
-  console.log(help)
-  process.exit(0)
-}
-const importing = command === 'pi2dsh-import'
-const plain = importing && args.at(-1) === '--plain'
-if (plain) args.pop()
-const [output, ...extra] = args
-const valid = importing
-  ? !output?.startsWith('--')
-  : (command === 'pi2dsh' || command === 'dsh2pi') && output && extra.length === 0
-if (!input || !valid || extra.length) {
-  console.error(help)
-  process.exit(2)
-}
+async function main([command, input, ...args]: string[]) {
+  if (command === '--help' || command === '-h') {
+    console.log(help)
+    return
+  }
+  if (command === 'migrate') return runMigration(input === undefined ? [] : [input, ...args])
+  const importing = command === 'pi2dsh-import'
+  const plain = importing && args.at(-1) === '--plain'
+  if (plain) args.pop()
+  const [output, ...extra] = args
+  const valid = importing
+    ? !output?.startsWith('--')
+    : (command === 'pi2dsh' || command === 'dsh2pi') && output
+  if (!input || !valid || extra.length) {
+    console.error(help)
+    process.exitCode = 2
+    return
+  }
 
-try {
   const report =
     importing ? await importPiToDsh(input, output, plain)
       : command === 'pi2dsh' ? await piToDsh(input, output!)
       : await dshToPi(input, output!)
   console.log(JSON.stringify(report, null, 2))
+}
+
+try {
+  await main(process.argv.slice(2))
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error))
-  process.exit(1)
+  process.exitCode = 1
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.3-b4]
+
+- Add `dcp-session migrate` and update the packaged skill to confirm the source, host, profile, and destination before writing. Support portable exports and direct imports for Windows Desktop, Linux desktop clients, Web, and TUI.
+- Preview duplicate ID and mixed-log conflicts, require explicit approval before recovery or a new ID, and reject a plan when its source or destination changes.
+- Write system messages inside their owning DSH step and preserve incomplete tool exchanges in the Pi archive. Verify imported Web sessions through both the list and history endpoints.
+
 ## [0.2.3-b3]
 
 - Add `dcp-session pi2dsh-import` and the `dcp-migrate-to-dsh` skill. Import a selected Pi session directly into the DeepSeek Harness 0.2.3-alpha.2 store with its active summary, retained messages, images and archived Pi entries.

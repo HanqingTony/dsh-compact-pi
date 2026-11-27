@@ -79,6 +79,38 @@ export function projectPiForDsh(entries: readonly SessionEntry[]) {
   return convertToLlm(system ? [system, ...conversation] : conversation)
     .map((message, index) => ({ type: 'message', id: `projected-${index}`, message }))
 }
+
+/** A native DSH step can only carry tools with both an advertised call and a result. */
+function settledTools(projected: ReturnType<typeof projectPiForDsh>) {
+  const result: typeof projected = []
+  const pending = new Set<string>()
+  for (const [index, entry] of projected.entries()) {
+    const { message } = entry
+    if (message.role === 'toolResult') {
+      if (pending.delete(message.toolCallId)) result.push(entry)
+      continue
+    }
+    pending.clear()
+    if (message.role !== 'assistant' || message.stopReason === 'error' || message.stopReason === 'aborted') {
+      result.push(entry)
+      continue
+    }
+    const followingResults = new Set<string>()
+    for (let next = index + 1; next < projected.length; next++) {
+      const following = projected[next]!.message
+      if (following.role !== 'toolResult') break
+      followingResults.add(following.toolCallId)
+    }
+    const content = message.content.filter((block) => {
+      if (block.type !== 'toolCall') return true
+      if (!block.id || !followingResults.delete(block.id)) return false
+      pending.add(block.id)
+      return true
+    })
+    if (content.length) result.push({ ...entry, message: { ...message, content } })
+  }
+  return result
+}
 function piHeader(header: DshHeader): PiHeader {
   return {
     type: 'session',
@@ -128,21 +160,22 @@ export function dshRowsFromPi(
   _file?: string,
   imageToDsh?: (image: any) => any,
   projected = projectPiForDsh(entries),
+  destination?: Pick<DshHeader, 'id' | 'cwd'>,
 ): string {
   const header: DshHeader = {
     type: 'session',
     version: SESSION_FORMAT_VERSION,
-    id: pi.id,
+    id: destination?.id ?? pi.id,
     createdAt: Date.parse(pi.timestamp),
-    cwd: pi.cwd,
+    cwd: destination?.cwd ?? pi.cwd,
     isSeeded: false,
     delegationDepth: 0,
-    ...(pi.parentSession ? { parentSession: pi.parentSession } : {}),
+    ...(!destination && pi.parentSession ? { parentSession: pi.parentSession } : {}),
   }
   const session = Session.create(header.id, [], headerForSession(header))
   appendPluginRecord(session, PI_HEADER, JSON.parse(JSON.stringify(pi)))
-  const state = createSyncState()
-  syncPiEntries(session, projected, state, { imageToDsh })
+  const state = createSyncState({ persistent: true })
+  syncPiEntries(session, settledTools(projected), state, { imageToDsh })
   closeTurn(session, state)
   // Preserve every entry, its original id, parent and metadata. DSH's message
   // surface is an export view; pi resumes from the lossless archive records.
@@ -162,9 +195,10 @@ export function writeDshFromPi(
   entries: readonly any[],
   imageToDsh?: (image: any) => any,
   projected?: ReturnType<typeof projectPiForDsh>,
+  destination?: Pick<DshHeader, 'id' | 'cwd'>,
 ): void {
   mkdirSync(path.dirname(file), { recursive: true })
-  const body = dshRowsFromPi(header, entries, file, imageToDsh, projected)
+  const body = dshRowsFromPi(header, entries, file, imageToDsh, projected, destination)
   const tmp = `${file}.${process.pid}.tmp`
   writeFileSync(tmp, body)
   renameSync(tmp, file)

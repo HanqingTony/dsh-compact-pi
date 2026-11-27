@@ -17,6 +17,8 @@ node --import tsx --test test/images-convert.test.ts test/differential.test.ts
 
 The resume test installs the built npm tarball in a temporary directory and loads its extension in the candidate pi SDK. It exercises automatic compaction and pi's manual compaction path with a retained PNG. Both paths must save a native compaction checkpoint and image assets, continue with the summary and retained image, and preserve them when the session is reopened.
 
+Run `node --import tsx --test test/migration.test.ts` on Windows or Linux to test explicit destination selection, read-only planning, stale plans, duplicate IDs, encoding conflicts, and opt-in recovery of Pi entries. The GitHub Actions matrix runs this test on both hosts. For desktop release checks, also open a synthetic imported session in the target app and verify its history.
+
 The test also generates a native pi checkpoint and a separate snapshot cut at the DCP journal commit using an earlier DCP release. On the candidate pi it checks that the next provider request contains the old summary, a retained message and the new user request. It disables fresh summarization during replay so a lost checkpoint fails the test. It runs the CLI in both directions, checking for inactive branch leakage, native context edits, archive fidelity and continued work after adding a message in DSH.
 
 The baseline bundle comes from Git commit `1f43099c0273a3edcbe5353a4aaf32884efd1fc9`. The candidate pi package is installed from npm into a temporary directory. If a shallow clone lacks the baseline, fetch the `v0.2.2-b3` tag before running the test. Other builds and the unit suite can run without that Git history.

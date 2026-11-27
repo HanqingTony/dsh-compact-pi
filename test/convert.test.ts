@@ -5,6 +5,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { zstdDecompressSync } from 'node:zlib'
+import { dshRowsFromPi, archivedPi } from '../src/codec.ts'
 import { dshToPi, piToDsh, readPiSession } from '../src/dsh/convert.ts'
 import { importPiToDsh } from '../src/dsh/import.ts'
 import { readDshFile } from '../src/dsh/store.ts'
@@ -95,6 +96,42 @@ for (const plain of [false, true]) {
   await assert.rejects(importPiToDsh(piFile, root, !plain), /different encoding/)
   assert.deepEqual(await fs.readFile(imported.output), bytes)
 }
+
+const [header, user, assistant] = piRows
+const system = {
+  ...user, id: 'system', message: { role: 'system', content: 'Historical system prompt' },
+}
+const withTools = {
+  ...assistant,
+  message: {
+    ...assistant!.message,
+    stopReason: 'toolUse',
+    content: [
+      { type: 'text', text: 'Still visible' },
+      { type: 'toolCall', id: 'finished', name: 'read', arguments: {} },
+      { type: 'toolCall', id: 'unfinished', name: 'read', arguments: {} },
+    ],
+  },
+}
+const toolResult = {
+  ...assistant, id: 'result', parentId: assistant!.id,
+  message: { role: 'toolResult', toolCallId: 'finished', toolName: 'read', content: [{ type: 'text', text: 'OK' }] },
+}
+const entries = [
+  system, { ...user, parentId: system.id }, withTools, toolResult,
+  { ...toolResult, id: 'orphan', parentId: toolResult.id, message: { ...toolResult.message, toolCallId: 'missing' } },
+]
+const [dshHeader, ...log] = sessionRows(Buffer.from(
+  dshRowsFromPi(header as Parameters<typeof dshRowsFromPi>[0], entries),
+))
+const systemIndex = log.findIndex((event) => event.type === 'system/message')
+assert.ok(systemIndex > 0)
+assert.equal(log[systemIndex - 1].type, 'step/start')
+for (const coordinate of ['turn', 'step'])
+  assert.equal(log[systemIndex].data[coordinate], log[systemIndex - 1].data[coordinate])
+assert.deepEqual(log.filter((e) => e.type === 'tool/call').map((e) => e.data.callId), ['finished'])
+assert.deepEqual(log.filter((e) => e.type === 'tool/result').map((e) => e.data.message.toolCallId), ['finished'])
+assert.deepEqual(archivedPi(dshHeader, log)?.entries, JSON.parse(JSON.stringify(entries)))
 
 console.log('convert ok', {
   dshEvents: dsh!.events.length,

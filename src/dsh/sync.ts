@@ -10,18 +10,20 @@ export interface SyncState {
   turnStarted: boolean
   systemSeq: number | undefined
   stepOpen: boolean
+  persistent: boolean
   seen: Set<string>
   toolCalls: Map<string, number>
   appended: number
 }
 
-export function createSyncState(): SyncState {
+export function createSyncState({ persistent = false }: { persistent?: boolean } = {}): SyncState {
   return {
     turn: 1,
     step: 0,
     turnStarted: false,
     systemSeq: undefined,
     stepOpen: false,
+    persistent,
     seen: new Set(),
     toolCalls: new Map(),
     appended: 0,
@@ -58,6 +60,12 @@ function appendSystem(
 ): void {
   if (state.systemSeq !== undefined) return
   ensureTurn(session, state)
+  // Persisted V4 system messages must belong to an open step.
+  if (state.persistent && !state.stepOpen) {
+    state.step += 1
+    append(session, 'step/start', { turn: state.turn, step: state.step })
+    state.stepOpen = true
+  }
   let content = piContentToDsh(
     systemPrompt && systemPrompt.trim().length > 0
       ? systemPrompt
