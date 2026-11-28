@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.3-b5]
+
+- Guide session migration one decision at a time. Confirm the target, resolve conflicts individually, and approve the exact output path before writing.
+- Show a short destination preview in the terminal wizard. Scripted plans still return JSON.
+- Record the compaction scope observation and provide an opt-in comparison harness. The default summary prompt remains the upstream prompt.
+
 ## [0.2.3-b4]
 
 - Add `dcp-session migrate` and update the packaged skill to confirm the source, host, profile, and destination before writing. Support portable exports and direct imports for Windows Desktop, Linux desktop clients, Web, and TUI.

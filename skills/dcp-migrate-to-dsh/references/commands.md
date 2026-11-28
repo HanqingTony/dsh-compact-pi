@@ -13,6 +13,10 @@ Use `linux-desktop` for a Linux desktop client on the same machine as its compat
 
 For Desktop and Web, choose a workspace already shown in the target app. Refresh the session list if the app was already open when the file was written.
 
+## Target details
+
+The direct-import plan needs the target machine and client, instance or profile, backend version, DSH home for attachments, session root, workspace, and encoding. Read the selected instance's settings when available. Use `migrate environment` to identify the current host and suggest paths. Ask separately before using any unresolved value. A Windows Desktop import runs under Windows Node.js. WSL is a separate environment, even on the same machine.
+
 ## Portable export
 
 ```text

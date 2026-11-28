@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
+import path from 'node:path'
 import { parseArgs } from 'node:util'
 import { DestinationConflict } from './import.ts'
 import {
@@ -61,8 +62,15 @@ async function interactive(source?: string) {
         } else throw error
       }
     }
-    print(plan)
-    const code = await ask('Review the destination above and type the confirmation code to write:')
+    console.log(`Session ${plan.sourceSessionId} → ${plan.target} on ${plan.host}`)
+    console.log(`Output: ${plan.output}`)
+    if (plan.attachmentHome !== path.dirname(plan.output))
+      console.log(`Attachments: ${plan.attachmentHome}`)
+    if (plan.sessionId !== plan.sourceSessionId)
+      console.log(`New session ID: ${plan.sessionId}`)
+    if (plan.mirrorRows)
+      console.log(`Recover Pi entries only, leaving ${plan.mirrorRows} DSH rows in the source.`)
+    const code = await ask(`Write to this location? Enter ${plan.confirmation} to confirm, or press Enter to cancel.`)
     if (!code) return
     print(await applyMigration(plan, code))
   } finally {

@@ -9,10 +9,10 @@ pi install npm:dsh-compact-pi@latest
 Use the explicit tag while the npm release has a prerelease version. The GitHub tag is also available:
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b4
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b5
 ```
 
-Restart pi or run `/reload` while idle. `/dcp-status` should show DCP `0.2.3b4` and DSH `0.2.3-alpha.2`. DCP is tested with pi 1.5.2 and 1.6.1 and needs Node.js `^24.22.3 || >=26.13.1`. Check `pi list` for duplicate installations if commands or warnings appear twice. See the [update instructions](../README.md#updating-an-existing-installation) for pinned tags and branch installs.
+Restart pi or run `/reload` while idle. `/dcp-status` should show DCP `0.2.3b5` and DSH `0.2.3-alpha.2`. DCP is tested with pi 1.5.2 and 1.6.1 and needs Node.js `^24.22.3 || >=26.13.1`. Check `pi list` for duplicate installations if commands or warnings appear twice. See the [update instructions](../README.md#updating-an-existing-installation) for pinned tags and branch installs.
 
 ## Compaction and model selection
 
@@ -25,7 +25,7 @@ If a historical summary model is unavailable in pi, use the picker to select an 
 
 ## Move a session between pi and DSH
 
-Run `dcp-session migrate` in a terminal, or ask the `dcp-migrate-to-dsh` skill to guide you. The wizard asks for a source and target, shows the exact output and attachment paths, then waits for confirmation. Agents use `migrate plan` and `migrate apply` so you can review the same information before any session or image is written. See the [command examples](../skills/dcp-migrate-to-dsh/references/commands.md).
+Run `dcp-session migrate` in a terminal, or ask the `dcp-migrate-to-dsh` skill to guide you. The skill asks one key question at a time and waits for your answer. Once the destination and any conflicts are settled, it shows the exact output path and asks whether to write. Agents use `migrate plan` and `migrate apply` to keep the preview and write separate. See the [command examples](../skills/dcp-migrate-to-dsh/references/commands.md).
 
 - **Portable export** writes a new folder under the export directory you choose. Move that whole folder to keep the JSONL and images together.
 - **Direct import** uses the target backend's version, profile, data home, session directory, workspace, and encoding. Run on the target machine. On Windows, use Windows Node.js and Windows paths. On Linux, use the data paths of the backend your desktop client actually connects to.

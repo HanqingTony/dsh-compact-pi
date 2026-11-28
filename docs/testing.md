@@ -24,3 +24,18 @@ The test also generates a native pi checkpoint and a separate snapshot cut at th
 The baseline bundle comes from Git commit `1f43099c0273a3edcbe5353a4aaf32884efd1fc9`. The candidate pi package is installed from npm into a temporary directory. If a shallow clone lacks the baseline, fetch the `v0.2.2-b3` tag before running the test. Other builds and the unit suite can run without that Git history.
 
 The **Pi session compatibility** workflow runs the same test on Ubuntu and native Windows for pi 1.5.2 and the candidate version. Run it manually with an exact candidate pi version before extending the supported matrix. On Windows, run `npm ci` and `npm run test:resume -- 1.6.1` in a native terminal with Windows Node.js and Git for Windows available on `PATH`. Both platforms use stubbed provider responses to verify session behavior. Summary quality with a live model is outside the test's scope.
+
+## Observation: task corrections carry over after compaction
+
+**Status: observe over time.** In a November 2026 zup session, the user clarified that a specific prompt-enhancement workflow took a reference image and used I2I. The checkpoint restated that choice as a general preference. The reported symptom was that later workflow designs also used I2I, including when the new task called for a fresh image from text. How often this occurs in normal long-running sessions remains open.
+
+In a controlled replay, DeepSeek Flash planned a separate poster workflow whose form had exactly three text fields. Each condition ran eight times. Both checkpoint variants also preserved the reference-image input when resuming the original enhancer in all eight trials.
+
+| Behavior on the new task | Recorded wording | Correction scoped to the original workflow | No checkpoint |
+|---|---:|---:|---:|
+| Added a required reference image | 5/8 | 1/8 | 0/8 |
+| Included I2I in the processing steps | 7/8 | 6/8 | 0/8 |
+
+Explicit scope reduced the extra input requirement in this fixture. I2I routing persisted in six of eight scoped trials. Keep the scope rule in the experiment and retain the existing default summary behavior while collecting more cases. For future reports, record the DCP and DSH versions, model, compaction trigger, a redacted correction with its original task, and what the subsequent plan actually did. Check both required inputs and processing steps.
+
+The optional harness uses Pi's configured credentials and sends a de-identified fixture. Run `node --import tsx scripts/test-correction-scope.ts deepseek deepseek-flash 8 text-form` to reproduce the fixed-form test. Use `checkpoint` for the less constrained poster request or `summaries` for two successive compactions before continuation. The harness prints the checkpoints or workflow plans as JSON for review.

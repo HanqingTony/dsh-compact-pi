@@ -1,6 +1,6 @@
 # Publishing dsh-compact-pi
 
-Use Node.js `^24.22.3 || >=26.13.1`. The package version `0.2.3-b4` corresponds to the displayed version `0.2.3b4`. Keep the upstream DSH base version and increment the DCP build suffix for subsequent releases.
+Use Node.js `^24.22.3 || >=26.13.1`. The package version `0.2.3-b5` corresponds to the displayed version `0.2.3b5`. Keep the upstream DSH base version and increment the DCP build suffix for subsequent releases.
 
 ## Verify a release
 
@@ -21,13 +21,13 @@ See [testing](testing.md) for the resume and migration matrix. If the source sna
 Authenticate interactively with `npm login`, then verify the intended publisher with `npm whoami`. Do not put authentication tokens in this repository.
 
 ```bash
-npm publish ./dsh-compact-pi-0.2.3-b4.tgz --access public --tag latest
+npm publish ./dsh-compact-pi-0.2.3-b5.tgz --access public --tag latest
 ```
 
 The package's `publishConfig` defaults to the public npm registry and the `beta` tag for candidate builds. Use the tested tarball and set `--tag latest` for the public release. Verify with `npm view dsh-compact-pi dist-tags`. Users can install with `pi install npm:dsh-compact-pi@latest` or pin the exact version.
 
 ```bash
-pi install npm:dsh-compact-pi@0.2.3-b4
+pi install npm:dsh-compact-pi@0.2.3-b5
 ```
 
 Restart pi or run `/reload`, then `/dcp-status`. Remove a previous local DCP package entry before loading the published package to avoid registering the extension twice. Run `pi list` to identify the installed source and `pi remove <source>` to remove it.
@@ -39,7 +39,7 @@ The package is listed in the [Pi package catalog](https://pi.dev/packages/dsh-co
 GitHub also hosts tagged releases:
 
 ```bash
-pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b4
+pi install git:github.com/HanqingTony/dsh-compact-pi@v0.2.3-b5
 ```
 
 A Git release must include `dist/`, `vendor/` and the package manifest so installing it does not require development dependencies or an upstream checkout. Tag only the verified release commit. Keep source provenance and third-party licenses in the repository and tarball.

@@ -629,8 +629,8 @@ var ValidationError = class _ValidationError extends TypeError {
    * @param path — the standard-schema issue path; segments may be `{ key }` objects.
    * @returns the property keys, or an empty array when the issue has no path.
    */
-  static normalizePath(path5 = []) {
-    return path5.map((segment) => typeof segment === "object" ? segment.key : segment);
+  static normalizePath(path6 = []) {
+    return path6.map((segment) => typeof segment === "object" ? segment.key : segment);
   }
   /**
    * Format an issue path as a dotted string.
@@ -638,8 +638,8 @@ var ValidationError = class _ValidationError extends TypeError {
    * @param path — the standard-schema issue path.
    * @returns the keys joined with `.`.
    */
-  static formatPath(path5) {
-    return _ValidationError.normalizePath(path5).map(String).join(".");
+  static formatPath(path6) {
+    return _ValidationError.normalizePath(path6).map(String).join(".");
   }
 };
 Object.defineProperty(ValidationError.prototype, kValidationError, {
@@ -3328,10 +3328,10 @@ var EXCEEDS_MODEL_CONTEXT = new RegExp(
   "i"
 );
 function errorChain(value) {
-  const path5 = /* @__PURE__ */ new Set();
+  const path6 = /* @__PURE__ */ new Set();
   const render = (current) => {
-    if (path5.has(current)) return "<circular cause>";
-    path5.add(current);
+    if (path6.has(current)) return "<circular cause>";
+    path6.add(current);
     try {
       if (!(current instanceof Error)) {
         if (typeof current === "object" && current !== null) {
@@ -3350,7 +3350,7 @@ function errorChain(value) {
     } catch {
       return "<unrenderable value>";
     } finally {
-      path5.delete(current);
+      path6.delete(current);
     }
   };
   return render(value);
@@ -3656,25 +3656,25 @@ Schema.prototype.volatile = function volatile() {
 };
 var resolvers = {};
 var checkedVolatile = /* @__PURE__ */ Symbol("checked-volatile-schema");
-function validateVolatileSchema(schema, path5 = [], blocked = false, seen = /* @__PURE__ */ new Map()) {
+function validateVolatileSchema(schema, path6 = [], blocked = false, seen = /* @__PURE__ */ new Map()) {
   const states = seen.get(schema) ?? /* @__PURE__ */ new Set();
   if (states.has(blocked)) return;
   states.add(blocked);
   seen.set(schema, states);
   if (schema.meta?.volatile && blocked) {
-    throw new ValidationError2("volatile fields require a fixed object path without an enclosing volatile field", { path: path5 });
+    throw new ValidationError2("volatile fields require a fixed object path without an enclosing volatile field", { path: path6 });
   }
   const nested = blocked || !!schema.meta?.volatile;
   if (schema.dict) {
-    for (const [key, child] of Object.entries(schema.dict)) validateVolatileSchema(child, [...path5, key], nested, seen);
+    for (const [key, child] of Object.entries(schema.dict)) validateVolatileSchema(child, [...path6, key], nested, seen);
   }
-  if (schema.sKey) validateVolatileSchema(schema.sKey, [...path5, "<key>"], true, seen);
+  if (schema.sKey) validateVolatileSchema(schema.sKey, [...path6, "<key>"], true, seen);
   if (schema.inner && (schema.type !== "lazy" || schema.inner[kSchema])) {
-    validateVolatileSchema(schema.inner, [...path5, "*"], true, seen);
+    validateVolatileSchema(schema.inner, [...path6, "*"], true, seen);
   }
   if (schema.list) {
     for (let index = 0; index < schema.list.length; index++) {
-      validateVolatileSchema(schema.list[index], [...path5, String(index)], true, seen);
+      validateVolatileSchema(schema.list[index], [...path6, String(index)], true, seen);
     }
   }
 }
@@ -4137,71 +4137,71 @@ var ALWAYS_POLICY_KEYS = /* @__PURE__ */ new Set([
   "backoff"
 ]);
 var BACKOFF_KEYS = /* @__PURE__ */ new Set(["initialDelayMs", "maxDelayMs", "jitterRatio"]);
-function validateKeys(value, allowed, path5) {
+function validateKeys(value, allowed, path6) {
   for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) throw new Error(`${path5}: unknown key "${key}"`);
+    if (!allowed.has(key)) throw new Error(`${path6}: unknown key "${key}"`);
   }
 }
-function resolveBackoff(config2, path5) {
-  if (config2 !== void 0) validateKeys(config2, BACKOFF_KEYS, path5);
+function resolveBackoff(config2, path6) {
+  if (config2 !== void 0) validateKeys(config2, BACKOFF_KEYS, path6);
   const initialDelayMs = config2?.initialDelayMs ?? DEFAULT_INITIAL_DELAY_MS;
   const maxDelayMs = config2?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
   const jitterRatio = config2?.jitterRatio ?? DEFAULT_JITTER_RATIO;
   if (!Number.isFinite(initialDelayMs) || initialDelayMs <= 0 || initialDelayMs > MAX_TIMER_DELAY_MS) {
-    throw new Error(`${path5}.initialDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+    throw new Error(`${path6}.initialDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
   }
   if (!Number.isFinite(maxDelayMs) || maxDelayMs <= 0 || maxDelayMs > MAX_TIMER_DELAY_MS) {
-    throw new Error(`${path5}.maxDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+    throw new Error(`${path6}.maxDelayMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
   }
   if (initialDelayMs > maxDelayMs) {
-    throw new Error(`${path5}.initialDelayMs must be less than or equal to maxDelayMs`);
+    throw new Error(`${path6}.initialDelayMs must be less than or equal to maxDelayMs`);
   }
   if (!Number.isFinite(jitterRatio) || jitterRatio < 0 || jitterRatio > 1) {
-    throw new Error(`${path5}.jitterRatio must be between 0 and 1`);
+    throw new Error(`${path6}.jitterRatio must be between 0 and 1`);
   }
   return Object.freeze({ initialDelayMs, maxDelayMs, jitterRatio });
 }
-function resolveRetryPolicy(config2, path5) {
+function resolveRetryPolicy(config2, path6) {
   if (config2 === void 0) {
     return Object.freeze({
       mode: "normal",
       maxRetries: DEFAULT_MAX_RETRIES,
       retryableCodes: DEFAULT_RETRYABLE_CODES,
-      ...resolveBackoff(void 0, `${path5}.backoff`)
+      ...resolveBackoff(void 0, `${path6}.backoff`)
     });
   }
   switch (config2.mode) {
     case "normal": {
-      validateKeys(config2, NORMAL_POLICY_KEYS, path5);
+      validateKeys(config2, NORMAL_POLICY_KEYS, path6);
       const maxRetries = config2.maxRetries ?? DEFAULT_MAX_RETRIES;
       const retryableCodes = config2.retryableCodes ?? [...DEFAULT_RETRYABLE_CODES];
       if (!Number.isSafeInteger(maxRetries) || maxRetries < 0) {
-        throw new Error(`${path5}.maxRetries must be a non-negative safe integer`);
+        throw new Error(`${path6}.maxRetries must be a non-negative safe integer`);
       }
       if (retryableCodes.length === 0) {
-        throw new Error(`${path5}.retryableCodes must not be empty`);
+        throw new Error(`${path6}.retryableCodes must not be empty`);
       }
       if (retryableCodes.some((code) => typeof code !== "string" || code.length === 0)) {
-        throw new Error(`${path5}.retryableCodes must contain only non-empty strings`);
+        throw new Error(`${path6}.retryableCodes must contain only non-empty strings`);
       }
       if (new Set(retryableCodes).size !== retryableCodes.length) {
-        throw new Error(`${path5}.retryableCodes must not contain duplicates`);
+        throw new Error(`${path6}.retryableCodes must not contain duplicates`);
       }
       return Object.freeze({
         mode: "normal",
         maxRetries,
         retryableCodes: Object.freeze([...retryableCodes]),
-        ...resolveBackoff(config2.backoff, `${path5}.backoff`)
+        ...resolveBackoff(config2.backoff, `${path6}.backoff`)
       });
     }
     case "always":
-      validateKeys(config2, ALWAYS_POLICY_KEYS, path5);
+      validateKeys(config2, ALWAYS_POLICY_KEYS, path6);
       return Object.freeze({
         mode: "always",
-        ...resolveBackoff(config2.backoff, `${path5}.backoff`)
+        ...resolveBackoff(config2.backoff, `${path6}.backoff`)
       });
     default:
-      throw new Error(`${path5}.mode must be "normal" or "always"`);
+      throw new Error(`${path6}.mode must be "normal" or "always"`);
   }
 }
 function callConfigEquals(a, b) {
@@ -5649,10 +5649,10 @@ var DEFAULT_AGENTS_HOME_DISPLAY = `~/${AGENTS_HOME_DIR_NAME}`;
 function defaultDshHome() {
   return join(homedir(), DSH_HOME_DIR_NAME);
 }
-function expandHomePath(path5) {
-  if (path5 === "~") return homedir();
-  if (path5.startsWith("~/") || path5.startsWith("~\\")) return join(homedir(), path5.slice(2));
-  return path5;
+function expandHomePath(path6) {
+  if (path6 === "~") return homedir();
+  if (path6.startsWith("~/") || path6.startsWith("~\\")) return join(homedir(), path6.slice(2));
+  return path6;
 }
 function resolveRoot(configured, env, envName, fallback) {
   const fromEnv = env[envName];
@@ -5910,17 +5910,17 @@ async function prepareImageFile(input2, limits, policy) {
     }
   };
 }
-async function syncDirectory(path5) {
+async function syncDirectory(path6) {
   if (process.platform === "win32") return;
-  const handle = await open(path5, constants.O_RDONLY);
+  const handle = await open(path6, constants.O_RDONLY);
   try {
     await handle.sync();
   } finally {
     await handle.close();
   }
 }
-async function ensureDurableDirectory(path5, boundary) {
-  const target = resolve3(path5);
+async function ensureDurableDirectory(path6, boundary) {
+  const target = resolve3(path6);
   const stop = resolve3(boundary);
   await mkdir(target, { recursive: true, mode: 448 });
   await chmod(target, 448);
@@ -5932,8 +5932,8 @@ async function ensureDurableDirectory(path5, boundary) {
     level = parent;
   }
 }
-async function ensureDurableHome(path5) {
-  const home = resolve3(path5);
+async function ensureDurableHome(path6) {
+  const home = resolve3(path6);
   if (!durableHomes.has(home)) {
     await ensureDurableDirectory(home, parse(home).root);
     durableHomes.add(home);
@@ -6053,13 +6053,13 @@ async function publishStagedObject(root, target, staged) {
     throw new AttachmentError("Unable to persist attachment.", "ATTACHMENT_WRITE_FAILED", { cause: error62 });
   }
 }
-async function digestFile(path5) {
+async function digestFile(path6) {
   const hash2 = createHash("sha256");
-  for await (const chunk of createReadStream(path5)) hash2.update(chunk);
+  for await (const chunk of createReadStream(path6)) hash2.update(chunk);
   return hash2.digest("hex");
 }
-async function removeTemporary(path5) {
-  await unlink(path5).catch(
+async function removeTemporary(path6) {
+  await unlink(path6).catch(
     /* v8 ignore next -- Cleanup can observe a staging name already removed after successful linking. */
     (cleanupError) => {
       if (!(cleanupError instanceof Error && "code" in cleanupError && cleanupError.code === "ENOENT")) throw cleanupError;
@@ -6278,9 +6278,9 @@ async function createRequestImage(attachment, target, hasAlpha, policy, signal) 
 function cachePath(root, hash2) {
   return join4(root, "request-images", hash2.slice(0, 2), hash2);
 }
-async function readCached(path5, target, expectedAlpha, signal) {
+async function readCached(path6, target, expectedAlpha, signal) {
   try {
-    const data = new Uint8Array(await readFile2(path5, { signal }));
+    const data = new Uint8Array(await readFile2(path6, { signal }));
     if (data.byteLength > target.maxImageBytes) return void 0;
     const detected = await probeImage(data);
     if (detected.depth !== "uchar" || detected.space !== "srgb" || detected.width > target.width || detected.height > target.height || !encodedAlphaIsCompatible(expectedAlpha, detected)) return void 0;
@@ -6301,12 +6301,12 @@ async function verifyRequestImage(image, expectedAlpha) {
   }
   return { ...image, hasAlpha: detected.hasAlpha };
 }
-async function writeCached(path5, data) {
-  await mkdir2(dirname3(path5), { recursive: true, mode: 448 });
-  const temporary = `${path5}.${randomUUID3()}.tmp`;
+async function writeCached(path6, data) {
+  await mkdir2(dirname3(path6), { recursive: true, mode: 448 });
+  const temporary = `${path6}.${randomUUID3()}.tmp`;
   try {
     await writeFile(temporary, data, { mode: 384, flag: "wx" });
-    await rename(temporary, path5);
+    await rename(temporary, path6);
   } finally {
     await rm(temporary, { force: true });
   }
@@ -6317,12 +6317,12 @@ async function readRequestImageFile(root, attachment, target, policy, signal) {
   const source = await probeImage(attachment.data);
   const variantId = requestImageVariantId(attachment.ref, target, policy);
   const hash2 = String(variantId).slice("sha256:".length);
-  const path5 = cachePath(root, hash2);
-  const cached2 = await readCached(path5, target, source.hasAlpha, signal);
+  const path6 = cachePath(root, hash2);
+  const cached2 = await readCached(path6, target, source.hasAlpha, signal);
   const created = cached2 ?? await createRequestImage(attachment, target, source.hasAlpha, policy, signal);
   const version3 = cached2 ?? (created.data === attachment.data ? { ...created, hasAlpha: source.hasAlpha } : await verifyRequestImage(created, source.hasAlpha));
   signal?.throwIfAborted();
-  if (cached2 === void 0 && version3.data !== attachment.data) await writeCached(path5, version3.data);
+  if (cached2 === void 0 && version3.data !== attachment.data) await writeCached(path6, version3.data);
   return {
     variantId,
     attachment: attachment.ref,
@@ -7547,10 +7547,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path5) {
-  if (!path5)
+function getElementAtPath(obj, path6) {
+  if (!path6)
     return obj;
-  return path5.reduce((acc, key) => acc?.[key], obj);
+  return path6.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7890,11 +7890,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path5, issues) {
+function prefixIssues(path6, issues) {
   return issues.map((iss) => {
     var _a4;
     (_a4 = iss).path ?? (_a4.path = []);
-    iss.path.unshift(path5);
+    iss.path.unshift(path6);
     return iss;
   });
 }
@@ -8352,16 +8352,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path5 = []) => {
+  const processError = (error63, path6 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path5, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8400,17 +8400,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path5 = []) => {
+  const processError = (error63, path6 = []) => {
     var _a4;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path5, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -8449,8 +8449,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path5 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path5) {
+  const path6 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path6) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25416,13 +25416,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path5 = ref.slice(1).split("/").filter(Boolean);
-  if (path5.length === 0) {
+  const path6 = ref.slice(1).split("/").filter(Boolean);
+  if (path6.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path5[0] === defsKey) {
-    const key = path5[1] === void 0 ? void 0 : decodeJSONPointerSegment(path5[1]);
+  if (path6[0] === defsKey) {
+    const key = path6[1] === void 0 ? void 0 : decodeJSONPointerSegment(path6[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -30301,19 +30301,19 @@ function buildSessionPath(entries, leafId, byId) {
   if (!leaf) {
     return [];
   }
-  const path5 = [];
+  const path6 = [];
   let current = leaf;
   while (current) {
-    path5.push(current);
+    path6.push(current);
     current = current.parentId ? index.get(current.parentId) : void 0;
   }
-  path5.reverse();
-  return path5;
+  path6.reverse();
+  return path6;
 }
-function getSessionContextSettings(path5) {
+function getSessionContextSettings(path6) {
   let thinkingLevel = "off";
   let model = null;
-  for (const entry of path5) {
+  for (const entry of path6) {
     if (entry.type === "thinking_level_change") {
       thinkingLevel = entry.thinkingLevel;
     } else if (entry.type === "model_change") {
@@ -30349,24 +30349,24 @@ function sessionEntryToContextMessages(entry) {
   return [];
 }
 function buildContextEntries(entries, leafId, byId) {
-  const path5 = buildSessionPath(entries, leafId, byId);
+  const path6 = buildSessionPath(entries, leafId, byId);
   let compaction = null;
-  for (const entry of path5) {
+  for (const entry of path6) {
     if (entry.type === "compaction") {
       compaction = entry;
     }
   }
   if (!compaction) {
-    return path5;
+    return path6;
   }
-  const compactionIdx = path5.findIndex((entry) => entry.id === compaction.id);
+  const compactionIdx = path6.findIndex((entry) => entry.id === compaction.id);
   if (compactionIdx < 0) {
-    return path5;
+    return path6;
   }
   const contextEntries = [compaction];
   let foundFirstKept = false;
   for (let i = 0; i < compactionIdx; i++) {
-    const entry = path5[i];
+    const entry = path6[i];
     if (entry.id === compaction.firstKeptEntryId) {
       foundFirstKept = true;
     }
@@ -30374,7 +30374,7 @@ function buildContextEntries(entries, leafId, byId) {
       contextEntries.push(entry);
     }
   }
-  contextEntries.push(...path5.slice(compactionIdx + 1));
+  contextEntries.push(...path6.slice(compactionIdx + 1));
   return contextEntries;
 }
 function projectContextEntry(entry, edit) {
@@ -30393,8 +30393,8 @@ function projectContextEntry(entry, edit) {
   });
 }
 function buildSessionProjection(entries, leafId, byId) {
-  const path5 = buildSessionPath(entries, leafId, byId);
-  const { thinkingLevel, model } = getSessionContextSettings(path5);
+  const path6 = buildSessionPath(entries, leafId, byId);
+  const { thinkingLevel, model } = getSessionContextSettings(path6);
   const contextEntries = buildContextEntries(entries, leafId, byId);
   const edits = /* @__PURE__ */ new Map();
   for (const entry of contextEntries) {
@@ -30785,6 +30785,7 @@ async function importPiToDsh(input2, root = path3.join(process.env.DSH_HOME || p
 // src/dsh/migration-cli.ts
 import { promises as fs6 } from "node:fs";
 import { createInterface } from "node:readline/promises";
+import path5 from "node:path";
 import { parseArgs } from "node:util";
 
 // src/dsh/migration.ts
@@ -31084,8 +31085,15 @@ async function interactive(source) {
         } else throw error62;
       }
     }
-    print(plan);
-    const code = await ask("Review the destination above and type the confirmation code to write:");
+    console.log(`Session ${plan.sourceSessionId} \u2192 ${plan.target} on ${plan.host}`);
+    console.log(`Output: ${plan.output}`);
+    if (plan.attachmentHome !== path5.dirname(plan.output))
+      console.log(`Attachments: ${plan.attachmentHome}`);
+    if (plan.sessionId !== plan.sourceSessionId)
+      console.log(`New session ID: ${plan.sessionId}`);
+    if (plan.mirrorRows)
+      console.log(`Recover Pi entries only, leaving ${plan.mirrorRows} DSH rows in the source.`);
+    const code = await ask(`Write to this location? Enter ${plan.confirmation} to confirm, or press Enter to cancel.`);
     if (!code) return;
     print(await applyMigration(plan, code));
   } finally {
